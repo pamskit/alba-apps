@@ -14,13 +14,16 @@ const navItems = [
 
 export default function AdminSidebar() {
    const pathname = usePathname();
+   const normalizedPath = pathname?.replace(/\/$/, "") || "/";
 
    return (
       <aside className="admin-sidebar">
          <div className="admin-sidebar__brand">Alba Apps</div>
          <nav className="admin-sidebar__nav">
             {navItems.map((item) => {
-               const isActive = pathname === item.href || (item.href === "/admin" && pathname === "/");
+               const isActive =
+                  normalizedPath === item.href ||
+                  (item.href === "/admin" && normalizedPath === "/");
                return (
                   <Link
                      key={item.href}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import Link from "next/link";
 
 const supabase = createClient();
 
@@ -14,47 +13,41 @@ export default function AdminDashboardPage() {
    const [loading, setLoading] = useState(false);
 
    useEffect(() => {
-      fetchMetrics();
+      const loadMetrics = async () => {
+         setLoading(true);
+         try {
+            const { data: produk } = await supabase.from("produk").select("id");
+            const { data: siswa } = await supabase.from("siswa").select("nis");
+
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const end = now.toISOString();
+
+            const { data: txns } = await supabase
+               .from("transaksi")
+               .select("id,total_bayar,metode_pembayaran, status_pembayaran, created_at")
+               .gte("created_at", startOfDay)
+               .lte("created_at", end);
+
+            setProductCount(produk?.length ?? 0);
+            setStudentCount(siswa?.length ?? 0);
+            setTxnCountToday(txns?.length ?? 0);
+            setRevenueToday((txns ?? []).reduce((s, t) => s + Number(t.total_bayar || 0), 0));
+         } catch (err) {
+            console.error(err);
+         } finally {
+            setLoading(false);
+         }
+      };
+
+      void loadMetrics();
    }, []);
-
-   async function fetchMetrics() {
-      setLoading(true);
-      try {
-         const { data: produk } = await supabase.from("produk").select("id");
-         const { data: siswa } = await supabase.from("siswa").select("nis");
-
-         const now = new Date();
-         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-         const end = now.toISOString();
-
-         const { data: txns } = await supabase
-            .from("transaksi")
-            .select("id,total_bayar,metode_pembayaran, status_pembayaran, created_at")
-            .gte("created_at", startOfDay)
-            .lte("created_at", end);
-
-         setProductCount(produk?.length ?? 0);
-         setStudentCount(siswa?.length ?? 0);
-         setTxnCountToday(txns?.length ?? 0);
-         setRevenueToday((txns ?? []).reduce((s, t) => s + Number(t.total_bayar || 0), 0));
-      } catch (err) {
-         console.error(err);
-      } finally {
-         setLoading(false);
-      }
-   }
 
    return (
       <div className="admin-dashboard">
          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h1>Dashboard Admin</h1>
-            <nav>
-               <Link href="/kasir" className="btn">Kasir</Link>
-               <Link href="/hutang" className="btn" style={{ marginLeft: 8 }}>Hutang</Link>
-               <Link href="/laporan" className="btn" style={{ marginLeft: 8 }}>Laporan</Link>
-               <Link href="/produk" className="btn" style={{ marginLeft: 8 }}>Produk</Link>
-               <Link href="/siswa" className="btn" style={{ marginLeft: 8 }}>Siswa</Link>
-            </nav>
+
          </div>
 
          {loading ? (

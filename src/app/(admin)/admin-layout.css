@@ -58,7 +58,9 @@
    color: var(--text);
 }
 
-.admin-sidebar__link--active {
+.admin-sidebar__link--active,
+.admin-sidebar__link--active:hover,
+.admin-sidebar__link--active:focus {
    background: var(--accent);
    color: #fff;
    box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.2);

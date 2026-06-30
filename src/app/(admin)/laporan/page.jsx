@@ -16,7 +16,7 @@ export default function LaporanPage() {
    const [loading, setLoading] = useState(false);
 
    useEffect(() => {
-      const fetchTransactions = async () => {
+      const loadTransactions = async () => {
          setLoading(true);
          try {
             const now = new Date();
@@ -48,7 +48,7 @@ export default function LaporanPage() {
          }
       };
 
-      fetchTransactions();
+      void loadTransactions();
    }, [filter]);
 
    const metrics = useMemo(() => {

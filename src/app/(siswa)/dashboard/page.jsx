@@ -13,48 +13,48 @@ export default function DashboardSiswaPage() {
    const [loading, setLoading] = useState(true);
 
    useEffect(() => {
-      async function fetchData() {
-         setLoading(true);
-         try {
-            const { data: siswaData, error: siswaError } = await supabase
-               .from("siswa")
-               .select("nis,nama_siswa,kelas,total_hutang")
-               .limit(1);
-
-            if (siswaError) throw siswaError;
-            const activeStudent = siswaData?.[0] ?? null;
-            if (!activeStudent) {
-               setStudent(null);
-               setActiveNis(null);
-               return;
-            }
-
-            setActiveNis(activeStudent.nis);
-            setStudent(activeStudent);
-
-            const [{ data: productData, error: productError }, { data: transactionData, error: transactionError }] = await Promise.all([
-               supabase.from("produk").select("id,nama_produk,harga,stok"),
-               supabase
-                  .from("transaksi")
-                  .select("id,metode_pembayaran,status_pembayaran,total_bayar,created_at")
-                  .eq("nis_siswa", activeStudent.nis)
-                  .order("created_at", { ascending: false }),
-            ]);
-
-            if (productError) throw productError;
-            if (transactionError) throw transactionError;
-
-            setProduk(productData ?? []);
-            setTransactions(transactionData ?? []);
-         } catch (error) {
-            console.error(error);
-         } finally {
-            setLoading(false);
-         }
-      }
-
       fetchData();
    }, []);
+
+   async function fetchData() {
+      setLoading(true);
+      try {
+         const { data: siswaData, error: siswaError } = await supabase
+            .from("siswa")
+            .select("nis,nama_siswa,kelas,total_hutang")
+            .limit(1);
+
+         if (siswaError) throw siswaError;
+         const activeStudent = siswaData?.[0] ?? null;
+         if (!activeStudent) {
+            setStudent(null);
+            setActiveNis(null);
+            return;
+         }
+
+         setActiveNis(activeStudent.nis);
+         setStudent(activeStudent);
+
+         const [{ data: productData, error: productError }, { data: transactionData, error: transactionError }] = await Promise.all([
+            supabase.from("produk").select("id,nama_produk,harga,stok"),
+            supabase
+               .from("transaksi")
+               .select("id,metode_pembayaran,status_pembayaran,total_bayar,created_at")
+               .eq("nis_siswa", activeStudent.nis)
+               .order("created_at", { ascending: false }),
+         ]);
+
+         if (productError) throw productError;
+         if (transactionError) throw transactionError;
+
+         setProduk(productData ?? []);
+         setTransactions(transactionData ?? []);
+      } catch (error) {
+         console.error(error);
+      } finally {
+         setLoading(false);
+      }
+   }
 
    const debtText = useMemo(() => {
       if (!student) return "";
