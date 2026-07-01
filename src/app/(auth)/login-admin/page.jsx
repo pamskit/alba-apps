@@ -15,7 +15,7 @@ export default function LoginAdminPage() {
       if (!session) return;
 
       if (session.role === "admin") {
-         router.replace("/kasir");
+         router.replace("/admin");
          return;
       }
 
