@@ -280,6 +280,14 @@ button:hover,
   font-weight: 700;
 }
 
+.mobile-nav-toggle {
+  display: none;
+}
+
+.mobile-nav-backdrop {
+  display: none;
+}
+
 @media (max-width: 1024px) {
 
   .dashboard,
@@ -309,11 +317,11 @@ button:hover,
   }
 
   .mobile-nav-toggle {
+    display: inline-flex;
     position: fixed;
     top: 0.9rem;
     left: 0.9rem;
     z-index: 1100;
-    display: inline-flex;
     flex-direction: column;
     gap: 0.24rem;
     padding: 0.7rem;
@@ -332,6 +340,7 @@ button:hover,
   }
 
   .mobile-nav-backdrop {
+    display: block;
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.45);
