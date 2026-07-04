@@ -1,0 +1,121 @@
+.order-siswa-page {
+   display: flex;
+   flex-direction: column;
+   gap: 1.5rem;
+}
+
+.page-header {
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+}
+
+.page-header h1 {
+   margin: 0;
+}
+
+.page-header p {
+   margin: 0;
+   color: #475569;
+}
+
+.order-siswa-layout {
+   display: grid;
+   grid-template-columns: 1.75fr 1fr;
+   gap: 1.5rem;
+}
+
+.order-siswa-list-panel,
+.order-siswa-details-panel {
+   background: #fff;
+   border: 1px solid #e2e8f0;
+   border-radius: 16px;
+   padding: 1.25rem;
+}
+
+.panel-title {
+   font-size: 1.1rem;
+   font-weight: 700;
+   margin-bottom: 1rem;
+}
+
+.order-siswa-table-wrap,
+.order-items-wrap {
+   overflow-x: auto;
+}
+
+.order-siswa-table,
+.order-items-table {
+   width: 100%;
+   border-collapse: collapse;
+}
+
+.order-siswa-table th,
+.order-siswa-table td,
+.order-items-table th,
+.order-items-table td {
+   border: 1px solid #e2e8f0;
+   padding: 0.85rem;
+   text-align: left;
+}
+
+.order-siswa-table th,
+.order-items-table th {
+   background: #f8fafc;
+}
+
+.order-siswa-empty,
+.order-items-empty,
+.order-siswa-empty-detail {
+   padding: 1rem;
+   color: #64748b;
+   text-align: center;
+}
+
+.order-siswa-row {
+   cursor: pointer;
+}
+
+.order-siswa-row:hover {
+   background: #f8fafc;
+}
+
+.order-siswa-row--selected {
+   background: #eff6ff;
+}
+
+.detail-block {
+   display: grid;
+   gap: 0.75rem;
+   margin-bottom: 1rem;
+}
+
+.detail-label {
+   color: #475569;
+   font-size: 0.9rem;
+}
+
+.detail-note {
+   background: #f8fafc;
+   border: 1px solid #e2e8f0;
+   border-radius: 12px;
+   padding: 0.85rem;
+}
+
+.detail-title {
+   font-size: 1rem;
+   font-weight: 600;
+   margin-bottom: 0.75rem;
+}
+
+.order-actions {
+   display: flex;
+   gap: 0.75rem;
+   flex-wrap: wrap;
+}
+
+@media (max-width: 1000px) {
+   .order-siswa-layout {
+      grid-template-columns: 1fr;
+   }
+}

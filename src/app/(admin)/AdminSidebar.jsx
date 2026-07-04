@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
    { href: "/kasir", label: "Kasir" },
    { href: "/topup-saldo", label: "Top-Up Saldo" },
    { href: "/hutang", label: "Hutang" },
+   { href: "/order-siswa", label: "Order Siswa" },
    { href: "/laporan", label: "Laporan" },
    { href: "/produk", label: "Produk" },
    { href: "/siswa", label: "Siswa" },
@@ -16,15 +17,10 @@ const navItems = [
 
 export default function AdminSidebar() {
    const pathname = usePathname() || "";
-   const normalizedPath = useMemo(
+   const currentPath = useMemo(
       () => pathname.split(/[?#]/)[0].replace(/\/$/, "") || "/",
       [pathname]
    );
-   const [currentPath, setCurrentPath] = useState(normalizedPath);
-
-   useEffect(() => {
-      setCurrentPath(normalizedPath);
-   }, [normalizedPath]);
 
    return (
       <aside className="sidebar admin-sidebar">

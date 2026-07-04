@@ -97,6 +97,13 @@
    border-radius: 18px;
    border: 1px solid #e5e7eb;
    background: #ffffff;
+   margin-top: 1.5rem;
+}
+
+.laporan-page__subheading {
+   margin: 1rem 0 0.75rem;
+   font-size: 1rem;
+   font-weight: 700;
 }
 
 .laporan-table {

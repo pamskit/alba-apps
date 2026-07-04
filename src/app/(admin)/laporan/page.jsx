@@ -15,10 +15,11 @@ const FILTER_OPTIONS = {
 export default function LaporanPage() {
    const [filter, setFilter] = useState("today");
    const [transactions, setTransactions] = useState([]);
+   const [orders, setOrders] = useState([]);
    const [loading, setLoading] = useState(false);
 
    useEffect(() => {
-      const loadTransactions = async () => {
+      const loadData = async () => {
          setLoading(true);
          try {
             const now = new Date();
@@ -33,15 +34,26 @@ export default function LaporanPage() {
             const start = startDate.toISOString();
             const end = now.toISOString();
 
-            const { data, error } = await supabase
-               .from("transaksi")
-               .select("id, nis_siswa, metode_pembayaran, status_pembayaran, total_bayar, created_at")
-               .gte("created_at", start)
-               .lte("created_at", end)
-               .order("created_at", { ascending: false });
+            const [transactionRes, orderRes] = await Promise.all([
+               supabase
+                  .from("transaksi")
+                  .select("id, nis_siswa, metode_pembayaran, status_pembayaran, total_bayar, created_at")
+                  .gte("created_at", start)
+                  .lte("created_at", end)
+                  .order("created_at", { ascending: false }),
+               supabase
+                  .from("order_siswa")
+                  .select("id, nis_siswa, metode_pembayaran, status_order, status_pembayaran, total_harga, created_at")
+                  .gte("created_at", start)
+                  .lte("created_at", end)
+                  .order("created_at", { ascending: false }),
+            ]);
 
-            if (!error) {
-               setTransactions(data ?? []);
+            if (!transactionRes.error) {
+               setTransactions(transactionRes.data ?? []);
+            }
+            if (!orderRes.error) {
+               setOrders(orderRes.data ?? []);
             }
          } catch (error) {
             console.error(error);
@@ -50,7 +62,7 @@ export default function LaporanPage() {
          }
       };
 
-      void loadTransactions();
+      void loadData();
    }, [filter]);
 
    const metrics = useMemo(() => {
@@ -74,13 +86,18 @@ export default function LaporanPage() {
          return item.metode_pembayaran === "Pelunasan" ? sum + Number(item.total_bayar || 0) : sum;
       }, 0);
 
+      const totalOrderSiswa = orders.length;
+      const totalOrderSiswaValue = orders.reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+
       return {
          totalTunai,
          totalQris,
          totalHutangBaru,
          totalPelunasanHutang,
+         totalOrderSiswa,
+         totalOrderSiswaValue,
       };
-   }, [transactions]);
+   }, [transactions, orders]);
 
    function exportTransactionsToCsv() {
       const rows = [
@@ -168,9 +185,18 @@ export default function LaporanPage() {
                      <div className="metric-card__label">Total Pelunasan Hutang</div>
                      <div className="metric-card__value">Rp {metrics.totalPelunasanHutang.toLocaleString()}</div>
                   </div>
+                  <div className="metric-card">
+                     <div className="metric-card__label">Order Siswa</div>
+                     <div className="metric-card__value">{metrics.totalOrderSiswa}</div>
+                  </div>
+                  <div className="metric-card">
+                     <div className="metric-card__label">Total Order Siswa</div>
+                     <div className="metric-card__value">Rp {metrics.totalOrderSiswaValue.toLocaleString()}</div>
+                  </div>
                </div>
 
                <div className="laporan-page__table-wrap">
+                  <h2 className="laporan-page__subheading">Transaksi Koperasi</h2>
                   <table className="laporan-table">
                      <thead>
                         <tr>
@@ -196,6 +222,42 @@ export default function LaporanPage() {
                                  <td className="laporan-table__cell">{item.metode_pembayaran}</td>
                                  <td className="laporan-table__cell">{item.status_pembayaran || "-"}</td>
                                  <td className="laporan-table__cell">Rp {Number(item.total_bayar || 0).toLocaleString()}</td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
+
+               <div className="laporan-page__table-wrap">
+                  <h2 className="laporan-page__subheading">Order Siswa</h2>
+                  <table className="laporan-table">
+                     <thead>
+                        <tr>
+                           <th className="laporan-table__head">Tanggal</th>
+                           <th className="laporan-table__head">NIS Siswa</th>
+                           <th className="laporan-table__head">Metode</th>
+                           <th className="laporan-table__head">Status Order</th>
+                           <th className="laporan-table__head">Status Bayar</th>
+                           <th className="laporan-table__head">Total Harga</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        {orders.length === 0 ? (
+                           <tr>
+                              <td className="laporan-table__empty" colSpan="6">
+                                 Tidak ada order siswa pada periode ini.
+                              </td>
+                           </tr>
+                        ) : (
+                           orders.map((item) => (
+                              <tr key={item.id} className="laporan-table__row">
+                                 <td className="laporan-table__cell">{new Date(item.created_at).toLocaleString("id-ID")}</td>
+                                 <td className="laporan-table__cell">{item.nis_siswa || "-"}</td>
+                                 <td className="laporan-table__cell">{item.metode_pembayaran}</td>
+                                 <td className="laporan-table__cell">{item.status_order}</td>
+                                 <td className="laporan-table__cell">{item.status_pembayaran}</td>
+                                 <td className="laporan-table__cell">Rp {Number(item.total_harga || 0).toLocaleString()}</td>
                               </tr>
                            ))
                         )}
