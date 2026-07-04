@@ -1,110 +1,213 @@
-.hutang {
-   padding: 20px;
+.hutang-page {
+   padding: 24px;
+   display: grid;
+   gap: 20px;
 }
 
-.hutang__header {
+.hutang-page__header {
+   display: flex;
+   flex-direction: column;
+   gap: 8px;
+}
+
+.hutang-page__title {
+   font-size: 28px;
+   font-weight: 800;
+   margin: 0;
+}
+
+.hutang-page__subtitle {
+   margin: 0;
+   color: #475569;
+   font-size: 0.98rem;
+}
+
+.hutang-page__toolbar {
    display: flex;
    justify-content: space-between;
    align-items: center;
-   margin-bottom: 24px;
-}
-
-.hutang__title {
-   font-size: 24px;
-   font-weight: 700;
-}
-
-.hutang__search {
-   display: flex;
-   gap: 12px;
+   gap: 16px;
    flex-wrap: wrap;
 }
 
-.hutang__filter {
-   padding: 10px 14px;
+.hutang-page__search {
+   width: min(360px, 100%);
+   padding: 12px 14px;
    border: 1px solid #d1d5db;
-   border-radius: 8px;
-   min-width: 220px;
+   border-radius: 14px;
+   font-size: 1rem;
+   outline: none;
 }
 
-.table-wrap {
+.hutang-page__search:focus {
+   border-color: #0ea5a4;
+   box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.12);
+}
+
+.hutang-page__table-wrap {
    overflow-x: auto;
    border: 1px solid #e5e7eb;
-   border-radius: 12px;
+   border-radius: 18px;
    background: #fff;
 }
 
-.table {
+.hutang-table {
    width: 100%;
    border-collapse: collapse;
+   min-width: 720px;
 }
 
-.table th,
-.table td {
-   padding: 14px;
+.hutang-table th,
+.hutang-table td {
+   padding: 16px;
    border-bottom: 1px solid #f3f4f6;
    text-align: left;
 }
 
-.table th {
+.hutang-table th {
    background: #f8fafc;
+   color: #334155;
+   font-weight: 700;
 }
 
-.table__row:hover {
+.hutang-table__row:hover {
    background: #f9fafb;
 }
 
-.badge {
-   display: inline-flex;
-   padding: 4px 8px;
-   border-radius: 999px;
-   background: #fde68a;
-   color: #92400e;
-   font-size: 12px;
+.hutang-table__cell {
+   color: #334155;
 }
 
-.actions {
-   display: flex;
-   gap: 8px;
-   flex-wrap: wrap;
+.hutang-table__empty {
+   padding: 24px;
+   text-align: center;
+   color: #64748b;
 }
 
+.btn,
 .button {
-   padding: 8px 12px;
-   border: 1px solid #d1d5db;
-   border-radius: 8px;
-   background: #fff;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   padding: 10px 16px;
+   border-radius: 12px;
+   border: 1px solid transparent;
+   background: #f8fafc;
+   color: #0f172a;
    cursor: pointer;
+   transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
+.btn:hover,
+.button:hover {
+   background: #ecfeff;
+}
+
+.btn--primary,
 .button--primary {
    background: #0ea5a4;
    color: #fff;
    border-color: #0ea5a4;
 }
 
+.btn--primary:hover,
+.button--primary:hover {
+   background: #0b8d82;
+}
+
 .modal {
    position: fixed;
-   top: 0;
-   left: 0;
-   width: 100%;
-   height: 100%;
+   inset: 0;
    display: grid;
    place-items: center;
-   background: rgba(15, 23, 42, 0.5);
+   background: rgba(15, 23, 42, 0.55);
    padding: 20px;
+   z-index: 50;
 }
 
 .modal__content {
    width: min(560px, 100%);
    background: #fff;
-   border-radius: 16px;
-   padding: 24px;
+   border-radius: 20px;
+   padding: 28px;
+   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.12);
 }
 
-.modal__footer {
-   margin-top: 18px;
+.modal__title {
+   margin: 0 0 10px;
+   font-size: 1.25rem;
+   font-weight: 700;
+}
+
+.modal__desc {
+   margin: 0 0 18px;
+   color: #475569;
+   line-height: 1.6;
+}
+
+.modal__field {
+   display: grid;
+   gap: 10px;
+   margin-bottom: 20px;
+}
+
+.modal__field label {
+   font-weight: 600;
+   color: #334155;
+}
+
+.modal__input {
+   width: 100%;
+   padding: 12px 14px;
+   border: 1px solid #d1d5db;
+   border-radius: 14px;
+   font-size: 1rem;
+   outline: none;
+}
+
+.modal__input:focus {
+   border-color: #0ea5a4;
+   box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.12);
+}
+
+.modal__hint {
+   margin: 0;
+   color: #64748b;
+   font-size: 0.94rem;
+}
+
+.modal__options {
+   display: grid;
+   gap: 12px;
+   margin-bottom: 22px;
+}
+
+.modal__option {
+   display: flex;
+   align-items: center;
+   gap: 12px;
+   padding: 12px 14px;
+   border: 1px solid #e2e8f0;
+   border-radius: 14px;
+   cursor: pointer;
+}
+
+.modal__option input {
+   accent-color: #0ea5a4;
+}
+
+.modal__option span {
+   font-size: 1rem;
+   color: #0f172a;
+}
+
+.modal__actions {
    display: flex;
    justify-content: flex-end;
-   gap: 10px;
+   gap: 12px;
+   flex-wrap: wrap;
+}
+
+.modal__actions .btn {
+   min-width: 120px;
 }

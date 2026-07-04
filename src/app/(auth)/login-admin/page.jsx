@@ -38,7 +38,7 @@ export default function LoginAdminPage() {
       }
 
       saveAuthSession({ role: "admin", username: "admin" });
-      router.replace("/kasir");
+      router.replace("/admin");
    }
 
    return (

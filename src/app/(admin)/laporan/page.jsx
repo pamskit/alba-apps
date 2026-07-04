@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
+import "./laporan.css";
 
 const supabase = createClient();
 
@@ -81,6 +82,44 @@ export default function LaporanPage() {
       };
    }, [transactions]);
 
+   function exportTransactionsToCsv() {
+      const rows = [
+         ["Tanggal", "NIS Siswa", "Metode", "Status", "Total Bayar"],
+         ...transactions.map((t) => [
+            new Date(t.created_at).toLocaleString("id-ID"),
+            t.nis_siswa ?? "",
+            t.metode_pembayaran ?? "",
+            t.status_pembayaran ?? "",
+            Number(t.total_bayar || 0),
+         ]),
+      ];
+
+      const csvContent = rows
+         .map((r) =>
+            r
+               .map((cell) => {
+                  if (typeof cell === "string") {
+                     return `"${cell.replace(/"/g, '""')}"`;
+                  }
+                  return `"${String(cell)}"`;
+               })
+               .join(",")
+         )
+         .join("\n");
+
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const now = new Date();
+      a.download = `laporan_${now.toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+   }
+
    return (
       <div className="laporan-page">
          <div className="laporan-page__header">
@@ -102,52 +141,8 @@ export default function LaporanPage() {
                   <option value="today">{FILTER_OPTIONS.today}</option>
                   <option value="month">{FILTER_OPTIONS.month}</option>
                </select>
-               <button
-                  className="btn btn--secondary"
-                  style={{ marginLeft: 12 }}
-                  onClick={() => {
-                     // export transactions as CSV for Excel
-                     const rows = [
-                        ["Tanggal", "NIS Siswa", "Metode", "Status", "Total Bayar"],
-                        ...transactions.map((t) => [
-                           new Date(t.created_at).toLocaleString("id-ID"),
-                           t.nis_siswa ?? "",
-                           t.metode_pembayaran ?? "",
-                           t.status_pembayaran ?? "",
-                           Number(t.total_bayar || 0),
-                        ]),
-                     ];
-
-                     const csvContent = rows
-                        .map((r) =>
-                           r
-                              .map((cell) => {
-                                 if (typeof cell === "string") {
-                                    // escape quotes
-                                    return `"${cell.replace(/"/g, '""')}"`;
-                                 }
-                                 return `"${String(cell)}"`;
-                              })
-                              .join(",")
-                        )
-                        .join("\n");
-
-                     // add BOM for Excel compatibility
-                     const bom = "\uFEFF";
-                     const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
-                     const url = URL.createObjectURL(blob);
-                     const a = document.createElement("a");
-                     a.href = url;
-                     const now = new Date();
-                     const fname = `laporan_${now.toISOString().slice(0, 10)}.csv`;
-                     a.download = fname;
-                     document.body.appendChild(a);
-                     a.click();
-                     a.remove();
-                     URL.revokeObjectURL(url);
-                  }}
-               >
-                  Export Excel (CSV)
+               <button className="btn btn--secondary laporan-page__button" onClick={exportTransactionsToCsv}>
+                  Export CSV
                </button>
             </div>
          </div>

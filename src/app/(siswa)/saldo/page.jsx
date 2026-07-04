@@ -10,7 +10,7 @@ const supabase = createClient();
 
 export default function SiswaSaldoPage() {
    const [student, setStudent] = useState(null);
-   const [topups, setTopups] = useState([]);
+   const [historyItems, setHistoryItems] = useState([]);
    const [loading, setLoading] = useState(true);
    const [errorMessage, setErrorMessage] = useState("");
 
@@ -24,7 +24,7 @@ export default function SiswaSaldoPage() {
             const nisSession = session?.role === "siswa" ? session.nis : null;
             if (!nisSession) {
                setStudent(null);
-               setTopups([]);
+               setHistoryItems([]);
                return;
             }
 
@@ -38,24 +38,53 @@ export default function SiswaSaldoPage() {
             const activeStudent = siswaData ?? null;
             if (!activeStudent) {
                setStudent(null);
-               setTopups([]);
+               setHistoryItems([]);
                return;
             }
 
             setStudent(activeStudent);
 
-            const { data: topupData, error: topupError } = await supabase
-               .from("topup_saldo")
-               .select("id,jumlah,metode,keterangan,created_at")
-               .eq("nis_siswa", activeStudent.nis)
-               .order("created_at", { ascending: false });
+            const [{ data: topupData, error: topupError }, { data: paymentData, error: paymentError }] = await Promise.all([
+               supabase
+                  .from("topup_saldo")
+                  .select("id,jumlah,metode,keterangan,created_at")
+                  .eq("nis_siswa", activeStudent.nis)
+                  .order("created_at", { ascending: false }),
+               supabase
+                  .from("transaksi")
+                  .select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at")
+                  .eq("nis_siswa", activeStudent.nis)
+                  .eq("metode_pembayaran", "Pelunasan")
+                  .order("created_at", { ascending: false }),
+            ]);
 
-            if (topupError) {
-               setTopups([]);
+            if (topupError || paymentError) {
+               setHistoryItems([]);
                return;
             }
 
-            setTopups(topupData ?? []);
+            const topupHistory = (topupData ?? []).map((item) => ({
+               id: `topup_${item.id}`,
+               created_at: item.created_at,
+               amount: Number(item.jumlah),
+               type: "Saldo Masuk",
+               method: item.metode,
+               description: item.keterangan || "Top-up saldo",
+            }));
+
+            const outgoingHistory = (paymentData ?? []).map((item) => ({
+               id: `trx_${item.id}`,
+               created_at: item.created_at,
+               amount: Number(item.total_bayar),
+               type: "Saldo Keluar",
+               method: "Pembayaran Hutang",
+               description: item.status_pembayaran || "",
+            }));
+
+            setHistoryItems([
+               ...topupHistory,
+               ...outgoingHistory,
+            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal memuat data saldo.");
@@ -71,7 +100,7 @@ export default function SiswaSaldoPage() {
       <div className="page-content">
          <div className="page-header">
             <h1>Saldo Siswa</h1>
-            <p>Informasi saldo dan riwayat top-up untuk akun Anda.</p>
+            <p>Informasi saldo dan riwayat mutasi saldo masuk dan keluar untuk akun Anda.</p>
          </div>
 
          {loading ? (
@@ -89,11 +118,11 @@ export default function SiswaSaldoPage() {
                </div>
 
                <div className="history-section">
-                  <h2>Riwayat Top-Up</h2>
-                  <p>Catatan pengisian saldo yang tersimpan dalam sistem.</p>
+                  <h2>Riwayat Saldo</h2>
+                  <p>Catatan saldo masuk dan keluar untuk akun Anda.</p>
 
-                  {topups.length === 0 ? (
-                     <div className="page-message">Belum ada riwayat top-up.</div>
+                  {historyItems.length === 0 ? (
+                     <div className="page-message">Belum ada riwayat saldo.</div>
                   ) : (
                      <div className="history-table-wrap">
                         <table className="history-table">
@@ -101,17 +130,17 @@ export default function SiswaSaldoPage() {
                               <tr>
                                  <th>Tanggal</th>
                                  <th>Jumlah</th>
-                                 <th>Metode</th>
+                                 <th>Tipe</th>
                                  <th>Keterangan</th>
                               </tr>
                            </thead>
                            <tbody>
-                              {topups.map((item) => (
+                              {historyItems.map((item) => (
                                  <tr key={item.id}>
                                     <td>{new Date(item.created_at).toLocaleString("id-ID")}</td>
-                                    <td>Rp {Number(item.jumlah).toLocaleString()}</td>
-                                    <td>{item.metode}</td>
-                                    <td>{item.keterangan || "-"}</td>
+                                    <td>Rp {Number(item.amount).toLocaleString()}</td>
+                                    <td>{item.type}</td>
+                                    <td>{item.description || item.method || "-"}</td>
                                  </tr>
                               ))}
                            </tbody>

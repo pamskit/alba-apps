@@ -1,24 +1,24 @@
-.produk-page {
+.siswa-page {
    display: flex;
    flex-direction: column;
    gap: 24px;
    padding: 24px;
 }
 
-.produk-page__header h1 {
+.siswa-page__header h1 {
    margin: 0;
    font-size: 2rem;
    font-weight: 800;
 }
 
-.produk-page__subtitle {
+.siswa-page__subtitle {
    margin: 8px 0 0;
    color: #475569;
    max-width: 720px;
    line-height: 1.6;
 }
 
-.produk-page__panel {
+.siswa-page__panel {
    background: #ffffff;
    border: 1px solid #e5e7eb;
    border-radius: 20px;
@@ -26,26 +26,26 @@
    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
 }
 
-.produk-form {
+.siswa-form {
    display: grid;
-   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
    gap: 16px;
    align-items: end;
 }
 
-.produk-form__group {
+.siswa-form__group {
    display: flex;
    flex-direction: column;
    gap: 8px;
 }
 
-.produk-form__label {
+.siswa-form__label {
    font-size: 0.95rem;
    color: #475569;
    font-weight: 600;
 }
 
-.produk-form__input {
+.siswa-form__input {
    width: 100%;
    border: 1px solid #cbd5e1;
    border-radius: 14px;
@@ -55,109 +55,84 @@
    background: #f8fafc;
 }
 
-.produk-form__input:focus {
+.siswa-form__input:focus {
    outline: none;
    border-color: #0ea5a4;
    box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.12);
 }
 
-.produk-form__button {
+.siswa-form__button {
    min-height: 44px;
    padding: 0 20px;
    border-radius: 14px;
 }
 
-.produk-page__table-panel {
+.siswa-page__table-panel {
    padding: 0;
 }
 
-.produk-page__toolbar {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   gap: 16px;
-   padding: 20px 24px 0;
-}
-
-.produk-page__search {
-   display: grid;
-   gap: 8px;
-   min-width: 280px;
-   flex: 1;
-}
-
-.produk-page__search-input {
-   width: 100%;
-}
-
-.produk-page__summary {
-   color: #475569;
-   font-size: 0.95rem;
-}
-
-.produk-table {
+.siswa-table {
    width: 100%;
    border-collapse: collapse;
-   min-width: 680px;
+   min-width: 720px;
 }
 
-.produk-table th,
-.produk-table td {
+.siswa-table th,
+.siswa-table td {
    padding: 16px 18px;
    border-bottom: 1px solid #f3f4f6;
 }
 
-.produk-table th {
+.siswa-table th {
    text-align: left;
    background: #f8fafc;
    color: #475569;
    font-weight: 700;
 }
 
-.produk-table__numeric {
+.siswa-table__numeric {
    text-align: right;
 }
 
-.produk-table tbody tr:hover {
+.siswa-table tbody tr:hover {
    background: #f8fafc;
 }
 
-.produk-table__stock-input {
-   width: 100px;
+.siswa-table__input {
+   width: 100%;
    border: 1px solid #cbd5e1;
    border-radius: 12px;
    padding: 10px 12px;
-   text-align: right;
    background: #ffffff;
 }
 
-.produk-actions {
+.siswa-actions {
    display: flex;
    flex-wrap: wrap;
    gap: 10px;
 }
 
-.produk-actions__button {
+.siswa-actions__button {
    min-height: 38px;
    padding: 0 14px;
 }
 
-.produk-table__empty {
+.siswa-table__empty {
    padding: 24px;
    text-align: center;
    color: #64748b;
 }
 
 @media (max-width: 900px) {
-   .produk-form {
+   .siswa-form {
       grid-template-columns: 1fr;
    }
 
-   .produk-table {
+   .siswa-table {
       min-width: 100%;
    }
 
-   .produk-actions {
+   .siswa-actions {
       flex-direction: column;
       align-items: stretch;
    }

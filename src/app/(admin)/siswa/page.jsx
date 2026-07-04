@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
+import "./siswa.css";
 
 const supabase = createClient();
 
@@ -112,69 +113,105 @@ export default function SiswaPage() {
 
    return (
       <div className="siswa-page">
-         <h1>Daftar Siswa</h1>
-         <p>Menampilkan semua siswa. Tambah siswa baru dengan mengisi form.</p>
+         <div className="siswa-page__header">
+            <div>
+               <h1>Daftar Siswa</h1>
+               <p className="siswa-page__subtitle">Menampilkan semua siswa. Tambah siswa baru dan kelola data langsung dari tabel.</p>
+            </div>
+         </div>
 
-         <section style={{ marginBottom: 20 }}>
-            <form onSubmit={handleAdd} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-               <input placeholder="NIS" value={nis} onChange={(e) => setNis(e.target.value)} />
-               <input placeholder="Nama siswa" value={nama} onChange={(e) => setNama(e.target.value)} />
-               <input placeholder="Kelas" value={kelas} onChange={(e) => setKelas(e.target.value)} />
-               <input placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-               <button className="btn btn--primary" type="submit" disabled={loading}>Tambah Siswa</button>
+         <section className="siswa-page__panel">
+            <form className="siswa-form" onSubmit={handleAdd}>
+               <div className="siswa-form__group">
+                  <label className="siswa-form__label" htmlFor="nis">NIS</label>
+                  <input id="nis" className="siswa-form__input" placeholder="NIS" value={nis} onChange={(e) => setNis(e.target.value)} />
+               </div>
+               <div className="siswa-form__group">
+                  <label className="siswa-form__label" htmlFor="nama">Nama Siswa</label>
+                  <input id="nama" className="siswa-form__input" placeholder="Nama siswa" value={nama} onChange={(e) => setNama(e.target.value)} />
+               </div>
+               <div className="siswa-form__group">
+                  <label className="siswa-form__label" htmlFor="kelas">Kelas</label>
+                  <input id="kelas" className="siswa-form__input" placeholder="Kelas" value={kelas} onChange={(e) => setKelas(e.target.value)} />
+               </div>
+               <div className="siswa-form__group">
+                  <label className="siswa-form__label" htmlFor="password">Password</label>
+                  <input id="password" className="siswa-form__input" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+               </div>
+               <button className="btn btn--primary siswa-form__button" type="submit" disabled={loading}>
+                  Tambah Siswa
+               </button>
             </form>
          </section>
 
-         <section>
+         <section className="siswa-page__panel siswa-page__table-panel">
             {loading && <Loading message="Memuat siswa..." size="small" />}
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+
+            <table className="siswa-table">
                <thead>
                   <tr>
-                     <th style={{ textAlign: "left", padding: 8 }}>NIS</th>
-                     <th style={{ textAlign: "left", padding: 8 }}>Nama</th>
-                     <th style={{ textAlign: "left", padding: 8 }}>Kelas</th>
-                     <th style={{ textAlign: "right", padding: 8 }}>Total Hutang</th>
-                     <th style={{ padding: 8 }}>Aksi</th>
+                     <th>NIS</th>
+                     <th>Nama</th>
+                     <th>Kelas</th>
+                     <th>Total Hutang</th>
+                     <th>Aksi</th>
                   </tr>
                </thead>
                <tbody>
                   {students.map((s) => (
-                     <tr key={s.nis} style={{ borderTop: "1px solid #eee" }}>
-                        <td style={{ padding: 8 }}>{s.nis}</td>
-                        <td style={{ padding: 8 }}>
+                     <tr key={s.nis}>
+                        <td>{s.nis}</td>
+                        <td>
                            {editingNis === s.nis ? (
-                              <input value={editNama} onChange={(e) => setEditNama(e.target.value)} />
+                              <input className="siswa-table__input" value={editNama} onChange={(e) => setEditNama(e.target.value)} />
                            ) : (
                               s.nama_siswa
                            )}
                         </td>
-                        <td style={{ padding: 8 }}>
+                        <td>
                            {editingNis === s.nis ? (
-                              <input value={editKelas} onChange={(e) => setEditKelas(e.target.value)} />
+                              <input className="siswa-table__input" value={editKelas} onChange={(e) => setEditKelas(e.target.value)} />
                            ) : (
                               s.kelas
                            )}
                         </td>
-                        <td style={{ padding: 8, textAlign: "right" }}>Rp {Number(s.total_hutang || 0).toLocaleString()}</td>
-                        <td style={{ padding: 8 }}>
-                           {editingNis === s.nis ? (
-                              <>
-                                 <input placeholder="Password baru" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} style={{ marginRight: 8 }} />
-                                 <button className="btn btn--primary" onClick={() => saveEdit(s.nis)} disabled={loading} style={{ marginRight: 8 }}>Simpan</button>
-                                 <button className="btn" onClick={cancelEdit}>Batal</button>
-                              </>
-                           ) : (
-                              <>
-                                 <button className="btn" onClick={() => startEdit(s)} style={{ marginRight: 8 }}>Edit</button>
-                                 <button className="btn" onClick={() => handleDelete(s.nis)}>Hapus</button>
-                              </>
-                           )}
+                        <td className="siswa-table__numeric">Rp {Number(s.total_hutang || 0).toLocaleString()}</td>
+                        <td>
+                           <div className="siswa-actions">
+                              {editingNis === s.nis ? (
+                                 <>
+                                    <input
+                                       className="siswa-table__input"
+                                       placeholder="Password baru"
+                                       value={editPassword}
+                                       onChange={(e) => setEditPassword(e.target.value)}
+                                    />
+                                    <button className="btn btn--primary siswa-actions__button" onClick={() => saveEdit(s.nis)} disabled={loading}>
+                                       Simpan
+                                    </button>
+                                    <button className="btn siswa-actions__button" onClick={cancelEdit}>
+                                       Batal
+                                    </button>
+                                 </>
+                              ) : (
+                                 <>
+                                    <button className="btn siswa-actions__button" onClick={() => startEdit(s)}>
+                                       Edit
+                                    </button>
+                                    <button className="btn siswa-actions__button btn--danger" onClick={() => handleDelete(s.nis)}>
+                                       Hapus
+                                    </button>
+                                 </>
+                              )}
+                           </div>
                         </td>
                      </tr>
                   ))}
                   {students.length === 0 && !loading && (
                      <tr>
-                        <td colSpan={5} style={{ padding: 8 }}>Tidak ada siswa.</td>
+                        <td colSpan={5} className="siswa-table__empty">
+                           Tidak ada siswa.
+                        </td>
                      </tr>
                   )}
                </tbody>

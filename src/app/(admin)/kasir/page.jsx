@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Select from "react-select";
 import { createClient } from "@/utils/supabase";
 
 const supabase = createClient();
@@ -8,7 +9,8 @@ const supabase = createClient();
 export default function KasirPage() {
    const [products, setProducts] = useState([]);
    const [siswa, setSiswa] = useState([]);
-   const [selectedSiswa, setSelectedSiswa] = useState("");
+   const [selectedSiswa, setSelectedSiswa] = useState(null);
+   const [productSearch, setProductSearch] = useState("");
    const [cart, setCart] = useState([]);
    const [paymentMethod, setPaymentMethod] = useState("Tunai");
    const [loading, setLoading] = useState(false);
@@ -51,8 +53,38 @@ export default function KasirPage() {
 
    const total = cart.reduce((s, i) => s + i.harga * i.qty, 0);
 
+   const filteredProducts = useMemo(() => {
+      const query = productSearch.toLowerCase().trim();
+      return products
+         .filter((p) =>
+            !query ||
+            p.nama_produk.toLowerCase().includes(query) ||
+            String(p.id).includes(query)
+         )
+         .sort((a, b) => {
+            if ((a.stok > 0) !== (b.stok > 0)) {
+               return b.stok > 0 ? 1 : -1;
+            }
+            return a.nama_produk.localeCompare(b.nama_produk);
+         });
+   }, [products, productSearch]);
+
+   const siswaOptions = useMemo(
+      () =>
+         siswa
+            .slice()
+            .sort((a, b) => String(a.nis).localeCompare(String(b.nis)))
+            .map((s) => ({
+               value: s.nis,
+               label: `${s.nis} - ${s.nama_siswa} (${s.kelas})`,
+               siswa: s,
+            })),
+      [siswa]
+   );
+
    async function handleProcess() {
-      if (!selectedSiswa) return alert("Pilih siswa terlebih dahulu");
+      const studentId = selectedSiswa?.value;
+      if (!studentId) return alert("Pilih siswa terlebih dahulu");
       if (cart.length === 0) return alert("Keranjang kosong");
       setLoading(true);
       try {
@@ -91,9 +123,9 @@ export default function KasirPage() {
 
          // if hutang update siswa.total_hutang
          if (paymentMethod === "Hutang") {
-            const siswaObj = siswa.find((s) => String(s.nis) === String(selectedSiswa));
+            const siswaObj = selectedSiswa?.siswa;
             const current = Number(siswaObj?.total_hutang ?? 0);
-            await supabase.from("siswa").update({ total_hutang: current + total }).eq("nis", selectedSiswa);
+            await supabase.from("siswa").update({ total_hutang: current + total }).eq("nis", studentId);
          }
 
          alert("Transaksi berhasil");
@@ -110,36 +142,67 @@ export default function KasirPage() {
    return (
       <div className="pos">
          <div className="pos__left">
-            <h2>Produk</h2>
-            <div className="product-grid">
-               {products.map((p) => (
-                  <div
-                     key={p.id}
-                     className={"product-card " + (p.stok <= 0 ? "product-card--disabled" : "")}
-                     onClick={() => p.stok > 0 && addToCart(p)}
-                  >
-                     <div className="product-card__name">{p.nama_produk}</div>
-                     <div className="product-card__price">Rp {p.harga.toLocaleString()}</div>
-                     <div className="product-card__stok">Stok: {p.stok}</div>
+            <div className="panel product-panel">
+               <div className="panel__header">
+                  <div>
+                     <h2>Produk</h2>
+                     <p className="panel__meta">{filteredProducts.length} produk ditemukan</p>
                   </div>
-               ))}
+                  <input
+                     className="search-input"
+                     type="search"
+                     value={productSearch}
+                     onChange={(e) => setProductSearch(e.target.value)}
+                     placeholder="Cari produk..."
+                  />
+               </div>
+
+               <div className="product-grid">
+                  {filteredProducts.length === 0 ? (
+                     <div className="empty-state">Tidak ada produk ditemukan.</div>
+                  ) : (
+                     filteredProducts.map((p) => (
+                        <div
+                           key={p.id}
+                           className={`product-card ${p.stok <= 0 ? "product-card--disabled" : ""}`}
+                           onClick={() => p.stok > 0 && addToCart(p)}
+                        >
+                           <div className="product-card__top">
+                              <div className="product-card__name">{p.nama_produk}</div>
+                              <div className={`product-card__badge ${p.stok > 0 ? "product-card__badge--available" : "product-card__badge--empty"}`}>
+                                 {p.stok > 0 ? `Stok ${p.stok}` : "Habis"}
+                              </div>
+                           </div>
+                           <div className="product-card__price">Rp {p.harga.toLocaleString()}</div>
+                        </div>
+                     ))
+                  )}
+               </div>
             </div>
          </div>
 
          <div className="pos__right">
             <div className="cart">
-               <div className="cart__header">Kasir POS</div>
+               <div className="panel__header">
+                  <div>
+                     <h2>Kasir POS</h2>
+                     <p className="panel__meta">Pilih siswa dan proses pesanan</p>
+                  </div>
+               </div>
 
                <div className="cart__siswa">
-                  <label>Pilih Siswa</label>
-                  <select value={selectedSiswa} onChange={(e) => setSelectedSiswa(e.target.value)}>
-                     <option value="">-- Pilih --</option>
-                     {siswa.map((s) => (
-                        <option key={s.nis} value={s.nis}>
-                           {s.nis} - {s.nama_siswa} ({s.kelas})
-                        </option>
-                     ))}
-                  </select>
+                  <label htmlFor="student-select">Pilih Siswa</label>
+                  <Select
+                     inputId="student-select"
+                     options={siswaOptions}
+                     value={selectedSiswa}
+                     onChange={setSelectedSiswa}
+                     placeholder="Cari dan pilih siswa..."
+                     isSearchable
+                     className="react-select-container"
+                     classNamePrefix="react-select"
+                     noOptionsMessage={() => "Tidak ada siswa"}
+                  />
                </div>
 
                <div className="cart__list">

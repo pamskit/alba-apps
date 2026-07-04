@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
+import "./produk.css";
 
 const supabase = createClient();
 
@@ -15,6 +16,7 @@ export default function ProdukPage() {
    const [newNama, setNewNama] = useState("");
    const [newHarga, setNewHarga] = useState(0);
    const [newStok, setNewStok] = useState(0);
+   const [searchQuery, setSearchQuery] = useState("");
 
    useEffect(() => {
       fetchProducts();
@@ -75,76 +77,165 @@ export default function ProdukPage() {
       }
    }
 
+   const filteredProducts = products.filter((product) => {
+      if (!searchQuery.trim()) return true;
+      const lowerQuery = searchQuery.toLowerCase();
+      return (
+         product.nama_produk.toLowerCase().includes(lowerQuery) ||
+         String(product.harga).includes(lowerQuery) ||
+         String(product.stok).includes(lowerQuery)
+      );
+   });
+
    return (
       <div className="produk-page">
-         <h1>Manajemen Produk</h1>
-         <p>Daftar produk. Edit stok langsung dan tambahkan produk baru.</p>
+         <div className="produk-page__header">
+            <div>
+               <h1>Manajemen Produk</h1>
+               <p className="produk-page__subtitle">Daftar produk, edit stok langsung, dan tambahkan produk baru dengan cepat.</p>
+            </div>
+         </div>
 
-         <section style={{ marginBottom: 20 }}>
-            <form onSubmit={handleAddProduct} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-               <input placeholder="Nama produk" value={newNama} onChange={(e) => setNewNama(e.target.value)} />
-               <input placeholder="Harga" type="number" value={newHarga} onChange={(e) => setNewHarga(e.target.value)} />
-               <input placeholder="Stok" type="number" value={newStok} onChange={(e) => setNewStok(e.target.value)} />
-               <button className="btn btn--primary" type="submit" disabled={loading}>Tambah Produk</button>
+         <section className="produk-page__panel">
+            <form className="produk-form" onSubmit={handleAddProduct}>
+               <div className="produk-form__group">
+                  <label className="produk-form__label" htmlFor="product-name">
+                     Nama Produk
+                  </label>
+                  <input
+                     id="product-name"
+                     className="produk-form__input"
+                     placeholder="Nama produk"
+                     value={newNama}
+                     onChange={(e) => setNewNama(e.target.value)}
+                  />
+               </div>
+               <div className="produk-form__group">
+                  <label className="produk-form__label" htmlFor="product-price">
+                     Harga
+                  </label>
+                  <input
+                     id="product-price"
+                     className="produk-form__input"
+                     placeholder="Harga"
+                     type="number"
+                     value={newHarga}
+                     onChange={(e) => setNewHarga(e.target.value)}
+                  />
+               </div>
+               <div className="produk-form__group">
+                  <label className="produk-form__label" htmlFor="product-stock">
+                     Stok
+                  </label>
+                  <input
+                     id="product-stock"
+                     className="produk-form__input"
+                     placeholder="Stok"
+                     type="number"
+                     value={newStok}
+                     onChange={(e) => setNewStok(e.target.value)}
+                  />
+               </div>
+               <button className="btn btn--primary produk-form__button" type="submit" disabled={loading}>
+                  Tambah Produk
+               </button>
             </form>
          </section>
 
-         <section>
+         <section className="produk-page__panel produk-page__table-panel">
+            <div className="produk-page__toolbar">
+               <div className="produk-page__search">
+                  <label htmlFor="produk-search" className="produk-form__label">
+                     Cari Produk
+                  </label>
+                  <input
+                     id="produk-search"
+                     className="produk-form__input produk-page__search-input"
+                     type="search"
+                     placeholder="Cari nama, harga, atau stok"
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+               </div>
+               <div className="produk-page__summary">
+                  Menampilkan {filteredProducts.length} dari {products.length} produk
+               </div>
+            </div>
+
             {loading && <Loading message="Memuat produk..." size="small" />}
-            <table className="produk-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+
+            <table className="produk-table">
                <thead>
                   <tr>
-                     <th style={{ textAlign: "left", padding: 8 }}>Nama</th>
-                     <th style={{ textAlign: "right", padding: 8 }}>Harga</th>
-                     <th style={{ textAlign: "right", padding: 8 }}>Stok</th>
-                     <th style={{ padding: 8 }}>Aksi</th>
+                     <th>Nama Produk</th>
+                     <th>Harga</th>
+                     <th>Stok</th>
+                     <th>Aksi</th>
                   </tr>
                </thead>
                <tbody>
-                  {products.map((p) => (
-                     <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
-                        <td style={{ padding: 8 }}>{p.nama_produk}</td>
-                        <td style={{ padding: 8, textAlign: "right" }}>Rp {Number(p.harga).toLocaleString()}</td>
-                        <td style={{ padding: 8, textAlign: "right" }}>
+                  {filteredProducts.map((p) => (
+                     <tr key={p.id}>
+                        <td>{p.nama_produk}</td>
+                        <td className="produk-table__numeric">Rp {Number(p.harga).toLocaleString()}</td>
+                        <td className="produk-table__numeric">
                            {editingId === p.id ? (
-                              <input type="number" value={editStockValue} onChange={(e) => setEditStockValue(e.target.value)} style={{ width: 80 }} />
+                              <input
+                                 className="produk-table__stock-input"
+                                 type="number"
+                                 value={editStockValue}
+                                 onChange={(e) => setEditStockValue(e.target.value)}
+                              />
                            ) : (
                               p.stok ?? 0
                            )}
                         </td>
-                        <td style={{ padding: 8 }}>
-                           {editingId === p.id ? (
-                              <>
-                                 <button className="btn btn--primary" onClick={() => saveStock(p.id)} disabled={loading} style={{ marginRight: 8 }}>
-                                    Simpan
-                                 </button>
-                                 <button className="btn" onClick={() => setEditingId(null)}>Batal</button>
-                              </>
-                           ) : (
-                              <>
-                                 <button className="btn" onClick={() => startEdit(p)} style={{ marginRight: 8 }}>Edit Stok</button>
-                                 <button className="btn" onClick={async () => {
-                                    if (!confirm(`Hapus produk ${p.nama_produk}?`)) return;
-                                    setLoading(true);
-                                    try {
-                                       const { error } = await supabase.from('produk').delete().eq('id', p.id);
-                                       if (error) throw error;
-                                       await fetchProducts();
-                                    } catch (err) {
-                                       console.error(err);
-                                       alert('Gagal menghapus produk');
-                                    } finally {
-                                       setLoading(false);
-                                    }
-                                 }}>Hapus</button>
-                              </>
-                           )}
+                        <td>
+                           <div className="produk-actions">
+                              {editingId === p.id ? (
+                                 <>
+                                    <button className="btn btn--primary produk-actions__button" onClick={() => saveStock(p.id)} disabled={loading}>
+                                       Simpan
+                                    </button>
+                                    <button className="btn produk-actions__button" onClick={() => setEditingId(null)}>
+                                       Batal
+                                    </button>
+                                 </>
+                              ) : (
+                                 <>
+                                    <button className="btn produk-actions__button" onClick={() => startEdit(p)}>
+                                       Edit Stok
+                                    </button>
+                                    <button
+                                       className="btn produk-actions__button btn--danger"
+                                       onClick={async () => {
+                                          if (!confirm(`Hapus produk ${p.nama_produk}?`)) return;
+                                          setLoading(true);
+                                          try {
+                                             const { error } = await supabase.from("produk").delete().eq("id", p.id);
+                                             if (error) throw error;
+                                             await fetchProducts();
+                                          } catch (err) {
+                                             console.error(err);
+                                             alert("Gagal menghapus produk");
+                                          } finally {
+                                             setLoading(false);
+                                          }
+                                       }}
+                                    >
+                                       Hapus
+                                    </button>
+                                 </>
+                              )}
+                           </div>
                         </td>
                      </tr>
                   ))}
-                  {products.length === 0 && !loading && (
+                  {filteredProducts.length === 0 && !loading && (
                      <tr>
-                        <td colSpan={4} style={{ padding: 8 }}>Tidak ada produk.</td>
+                        <td colSpan={4} className="produk-table__empty">
+                           Tidak ada produk yang cocok.
+                        </td>
                      </tr>
                   )}
                </tbody>

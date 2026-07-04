@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
+import "./hutang.css";
 
 const supabase = createClient();
 
@@ -10,6 +11,7 @@ export default function BukuHutangPage() {
    const [searchTerm, setSearchTerm] = useState("");
    const [selectedStudent, setSelectedStudent] = useState(null);
    const [paymentMethod, setPaymentMethod] = useState("Tunai");
+   const [paymentAmount, setPaymentAmount] = useState("");
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [loading, setLoading] = useState(false);
 
@@ -40,40 +42,53 @@ export default function BukuHutangPage() {
    function openConfirmModal(student) {
       setSelectedStudent(student);
       setPaymentMethod("Tunai");
+      setPaymentAmount(student.total_hutang ?? "");
       setIsModalOpen(true);
    }
 
    async function handlePayOff() {
       if (!selectedStudent) return;
 
+      const amount = Number(paymentAmount);
+      const remaining = Number(selectedStudent.total_hutang) - amount;
+
+      if (!amount || amount <= 0) {
+         return alert("Masukkan nominal pembayaran yang valid");
+      }
+
+      if (amount > Number(selectedStudent.total_hutang)) {
+         return alert("Nominal pembayaran tidak boleh lebih besar dari total hutang");
+      }
+
       setLoading(true);
       try {
+         const newTotal = Math.max(0, remaining);
          const { error: updateError } = await supabase
             .from("siswa")
-            .update({ total_hutang: 0 })
+            .update({ total_hutang: newTotal })
             .eq("nis", selectedStudent.nis);
 
          if (updateError) throw updateError;
 
-         // generate transaksi id to satisfy NOT NULL constraint
          const trxId = `trx_${Date.now()}`;
          const { error: insertError } = await supabase.from("transaksi").insert({
             id: trxId,
             nis_siswa: selectedStudent.nis,
             metode_pembayaran: paymentMethod,
-            status_pembayaran: "Lunas",
-            total_bayar: Number(selectedStudent.total_hutang),
+            status_pembayaran: amount >= Number(selectedStudent.total_hutang) ? "Lunas" : "Belum Lunas",
+            total_bayar: amount,
          });
 
          if (insertError) throw insertError;
 
          setIsModalOpen(false);
          setSelectedStudent(null);
+         setPaymentAmount("");
          await fetchStudents();
-         alert("Hutang berhasil dilunasi");
+         alert("Pembayaran hutang berhasil disimpan");
       } catch (error) {
          console.error(error);
-         alert("Gagal melunasi hutang");
+         alert("Gagal memproses pembayaran hutang");
       } finally {
          setLoading(false);
       }
@@ -143,6 +158,23 @@ export default function BukuHutangPage() {
                      Lunasi hutang <strong>{selectedStudent.nama_siswa}</strong> sebesar <strong>Rp {Number(selectedStudent.total_hutang).toLocaleString()}</strong>?
                   </p>
 
+                  <div className="modal__field">
+                     <label htmlFor="payment-amount">Nominal Bayar</label>
+                     <input
+                        id="payment-amount"
+                        className="modal__input"
+                        type="number"
+                        min="1"
+                        max={selectedStudent.total_hutang}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder="Masukkan nominal bayar"
+                     />
+                     <p className="modal__hint">
+                        Total hutang siswa: <strong>Rp {Number(selectedStudent.total_hutang).toLocaleString()}</strong>
+                     </p>
+                  </div>
+
                   <div className="modal__options">
                      <label className="modal__option">
                         <input
@@ -171,7 +203,11 @@ export default function BukuHutangPage() {
                         Batal
                      </button>
                      <button className="btn btn--primary" onClick={handlePayOff} disabled={loading}>
-                        {loading ? "Memproses..." : "Konfirmasi Lunas"}
+                        {loading
+                           ? "Memproses..."
+                           : Number(paymentAmount) >= Number(selectedStudent.total_hutang)
+                              ? "Konfirmasi Lunas"
+                              : "Bayar Sebagian"}
                      </button>
                   </div>
                </div>
