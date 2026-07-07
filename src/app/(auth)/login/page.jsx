@@ -53,26 +53,27 @@ function UnifiedLoginContent() {
          return;
       }
 
-      // Check if it's a guru login (NIP format: 4 digits starting with 2)
-      if (/^\d{4}$/.test(normalizedIdentifier) && normalizedIdentifier.startsWith("2")) {
-         try {
-            const { data, error } = await supabase
-               .from("guru")
-               .select("nip,nama_guru,bidang_studi,password")
-               .eq("nip", Number(normalizedIdentifier))
-               .maybeSingle();
+      // If identifier is numeric, try guru first, then siswa.
+      if (!/^\d+$/.test(normalizedIdentifier)) {
+         alert("Masukkan NIS siswa atau NIP guru yang valid.");
+         setLoading(false);
+         return;
+      }
 
-            if (error) {
-               throw error;
-            }
+      const numericId = Number(normalizedIdentifier);
 
-            if (!data) {
-               alert("NIP guru tidak ditemukan.");
-               setLoading(false);
-               return;
-            }
+      // Try guru lookup first (covers variable-length NIP like 22222)
+      try {
+         const { data: guruData, error: guruError } = await supabase
+            .from("guru")
+            .select("nip,nama_guru,bidang_studi,password")
+            .eq("nip", numericId)
+            .maybeSingle();
 
-            if (String(data.password) !== String(password)) {
+         if (guruError) throw guruError;
+
+         if (guruData) {
+            if (String(guruData.password) !== String(password)) {
                alert("Password salah.");
                setLoading(false);
                return;
@@ -80,46 +81,38 @@ function UnifiedLoginContent() {
 
             saveAuthSession({
                role: "guru",
-               nip: data.nip,
-               nama: data.nama_guru,
-               bidang_studi: data.bidang_studi,
+               nip: guruData.nip,
+               nama: guruData.nama_guru,
+               bidang_studi: guruData.bidang_studi,
             });
 
             router.replace("/guru/dashboard");
             return;
-         } catch (error) {
-            console.error(error);
-            alert("Gagal memeriksa akun guru.");
-            setLoading(false);
-            return;
          }
-      }
-
-      // Check if it's a siswa login (NIS format: 4 digits starting with 1)
-      if (!/^\d+$/.test(normalizedIdentifier)) {
-         alert("Masukkan NIS siswa atau NIP guru yang valid.");
+      } catch (error) {
+         console.error(error);
+         alert("Gagal memeriksa akun guru.");
          setLoading(false);
          return;
       }
 
+      // If not a guru, try siswa
       try {
-         const { data, error } = await supabase
+         const { data: siswaData, error: siswaError } = await supabase
             .from("siswa")
             .select("nis,nama_siswa,kelas,password")
-            .eq("nis", Number(normalizedIdentifier))
+            .eq("nis", numericId)
             .maybeSingle();
 
-         if (error) {
-            throw error;
-         }
+         if (siswaError) throw siswaError;
 
-         if (!data) {
+         if (!siswaData) {
             alert("NIS tidak ditemukan.");
             setLoading(false);
             return;
          }
 
-         if (String(data.password) !== String(password)) {
+         if (String(siswaData.password) !== String(password)) {
             alert("Password salah.");
             setLoading(false);
             return;
@@ -127,9 +120,9 @@ function UnifiedLoginContent() {
 
          saveAuthSession({
             role: "siswa",
-            nis: data.nis,
-            nama: data.nama_siswa,
-            kelas: data.kelas,
+            nis: siswaData.nis,
+            nama: siswaData.nama_siswa,
+            kelas: siswaData.kelas,
          });
 
          router.replace("/dashboard");
