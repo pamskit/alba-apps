@@ -155,9 +155,52 @@ export default function OrderSiswaPage() {
 
             if (orderError) throw orderError;
 
-            setMessage("Order berhasil dikonfirmasi.");
-            await fetchOrders();
-            if (selectedOrderId === order.id) await fetchOrderItems(order.id);
+            // Create transaksi record and reduce product stock
+            try {
+               const trxId = `trx_${Date.now()}`;
+               const { data: transaksiData, error: tErr } = await supabase
+                  .from("transaksi")
+                  .insert({
+                     id: trxId,
+                     nis_siswa: order.siswa?.nis ?? null,
+                     total_bayar: Number(order.total_harga ?? 0),
+                     metode_pembayaran: order.metode_pembayaran,
+                     status_pembayaran: "Lunas",
+                  })
+                  .select()
+                  .maybeSingle();
+               if (tErr) throw tErr;
+
+               const transaksiId = (transaksiData && transaksiData.id) || trxId;
+
+               // fetch detail_order_siswa for this order
+               const { data: details, error: detailsErr } = await supabase
+                  .from("detail_order_siswa")
+                  .select("produk_id,jumlah,harga_satuan")
+                  .eq("order_id", order.id);
+               if (detailsErr) throw detailsErr;
+
+               const detailPayload = (details ?? []).map((d) => ({ transaksi_id: transaksiId, produk_id: d.produk_id, jumlah: d.jumlah }));
+               if (detailPayload.length > 0) {
+                  const { error: dErr } = await supabase.from("detail_transaksi").insert(detailPayload);
+                  if (dErr) throw dErr;
+
+                  // reduce produk stok
+                  for (const d of detailPayload) {
+                     const { data: prodData } = await supabase.from("produk").select("stok").eq("id", d.produk_id).maybeSingle();
+                     const currentStok = Number(prodData?.stok ?? 0);
+                     const newStok = Math.max(0, currentStok - Number(d.jumlah ?? 0));
+                     await supabase.from("produk").update({ stok: newStok }).eq("id", d.produk_id);
+                  }
+               }
+
+               setMessage("Order berhasil dikonfirmasi.");
+               await fetchOrders();
+               if (selectedOrderId === order.id) await fetchOrderItems(order.id);
+            } catch (err) {
+               console.error(err);
+               setErrorMessage("Order dikonfirmasi tapi gagal mencatat transaksi.");
+            }
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal mengonfirmasi order dengan pembayaran saldo.");
@@ -176,10 +219,50 @@ export default function OrderSiswaPage() {
                supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id),
             ]);
             if (updateHutangError || orderError) throw updateHutangError || orderError;
+            // For hutang, also create transaksi record with status Belum Lunas and reduce stock / add detail_transaksi
+            try {
+               const trxId = `trx_${Date.now()}`;
+               const { data: transaksiData, error: tErr } = await supabase
+                  .from("transaksi")
+                  .insert({
+                     id: trxId,
+                     nis_siswa: order.siswa?.nis ?? null,
+                     total_bayar: Number(order.total_harga ?? 0),
+                     metode_pembayaran: order.metode_pembayaran,
+                     status_pembayaran: "Belum Lunas",
+                  })
+                  .select()
+                  .maybeSingle();
+               if (tErr) throw tErr;
 
-            setMessage("Order hutang berhasil dikonfirmasi dan total hutang siswa diperbarui.");
-            await fetchOrders();
-            if (selectedOrderId === order.id) await fetchOrderItems(order.id);
+               const transaksiId = (transaksiData && transaksiData.id) || trxId;
+
+               const { data: details, error: detailsErr } = await supabase
+                  .from("detail_order_siswa")
+                  .select("produk_id,jumlah,harga_satuan")
+                  .eq("order_id", order.id);
+               if (detailsErr) throw detailsErr;
+
+               const detailPayload = (details ?? []).map((d) => ({ transaksi_id: transaksiId, produk_id: d.produk_id, jumlah: d.jumlah }));
+               if (detailPayload.length > 0) {
+                  const { error: dErr } = await supabase.from("detail_transaksi").insert(detailPayload);
+                  if (dErr) throw dErr;
+
+                  for (const d of detailPayload) {
+                     const { data: prodData } = await supabase.from("produk").select("stok").eq("id", d.produk_id).maybeSingle();
+                     const currentStok = Number(prodData?.stok ?? 0);
+                     const newStok = Math.max(0, currentStok - Number(d.jumlah ?? 0));
+                     await supabase.from("produk").update({ stok: newStok }).eq("id", d.produk_id);
+                  }
+               }
+
+               setMessage("Order hutang berhasil dikonfirmasi dan total hutang siswa diperbarui.");
+               await fetchOrders();
+               if (selectedOrderId === order.id) await fetchOrderItems(order.id);
+            } catch (err) {
+               console.error(err);
+               setErrorMessage("Order hutang dikonfirmasi tapi gagal mencatat transaksi.");
+            }
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal mengonfirmasi order hutang.");

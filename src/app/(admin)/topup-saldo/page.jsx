@@ -94,6 +94,7 @@ export default function AdminTopupSaldoPage() {
             if (insertError) throw insertError;
          }
 
+
          alert("Top-up saldo berhasil.");
          setAmount("");
          setNote("");
@@ -107,6 +108,15 @@ export default function AdminTopupSaldoPage() {
          setLoading(false);
       }
    }
+
+   // Prepare options for react-select (value/label shape)
+   const selectOptions = (selectedType === "siswa" ? siswa : guru).map((item) => ({
+      value: selectedType === "siswa" ? item.nis : item.nip,
+      label:
+         selectedType === "siswa"
+            ? `${item.nis} - ${item.nama_siswa} (${item.kelas}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`
+            : `${item.nip} - ${item.nama_guru} (${item.bidang_studi ?? "-"}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`,
+   }));
 
    return (
       <div className="page-content">
@@ -130,7 +140,11 @@ export default function AdminTopupSaldoPage() {
                <label>
                   Pilih {selectedType === "siswa" ? "Siswa" : "Guru"}
                   <Select
-                     value={selectedType === "siswa" ? siswa.find((item) => String(item.nis) === String(selectedSiswa)) : guru.find((item) => String(item.nip) === String(selectedGuru)) || null}
+                     value={
+                        selectedType === "siswa"
+                           ? selectOptions.find((opt) => String(opt.value) === String(selectedSiswa)) || null
+                           : selectOptions.find((opt) => String(opt.value) === String(selectedGuru)) || null
+                     }
                      onChange={(value) => {
                         if (selectedType === "siswa") {
                            setSelectedSiswa(value?.value || "");
@@ -138,13 +152,7 @@ export default function AdminTopupSaldoPage() {
                            setSelectedGuru(value?.value || "");
                         }
                      }}
-                     options={(selectedType === "siswa" ? siswa : guru).map((item) => ({
-                        value: selectedType === "siswa" ? item.nis : item.nip,
-                        label:
-                           selectedType === "siswa"
-                              ? `${item.nis} - ${item.nama_siswa} (${item.kelas}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`
-                              : `${item.nip} - ${item.nama_guru} (${item.bidang_studi ?? "-"}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`,
-                     }))}
+                     options={selectOptions}
                      placeholder="Cari dan pilih..."
                      isClearable
                      className="react-select-container"
