@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
 import { createClient } from "@/utils/supabase";
+import "./kasir.css";
 
 const supabase = createClient();
 
 export default function KasirPage() {
    const [products, setProducts] = useState([]);
    const [siswa, setSiswa] = useState([]);
+   const [guru, setGuru] = useState([]);
+   const [customerType, setCustomerType] = useState("siswa");
    const [selectedSiswa, setSelectedSiswa] = useState(null);
+   const [selectedGuru, setSelectedGuru] = useState(null);
    const [productSearch, setProductSearch] = useState("");
    const [cart, setCart] = useState([]);
    const [paymentMethod, setPaymentMethod] = useState("Tunai");
@@ -20,12 +24,15 @@ export default function KasirPage() {
    }, []);
 
    async function fetchAll() {
-      const { data: produk } = await supabase.from("produk").select("id,nama_produk,harga,stok");
-      const { data: listSiswa } = await supabase
-         .from("siswa")
-         .select("nis,nama_siswa,kelas,total_hutang,saldo");
+      const [{ data: produk }, { data: listSiswa }, { data: listGuru }] = await Promise.all([
+         supabase.from("produk").select("id,nama_produk,harga,stok"),
+         supabase.from("siswa").select("nis,nama_siswa,kelas,total_hutang,saldo"),
+         supabase.from("guru").select("nip,nama_guru,bidang_studi,total_hutang,saldo"),
+      ]);
+
       setProducts(produk ?? []);
       setSiswa(listSiswa ?? []);
+      setGuru(listGuru ?? []);
    }
 
    function addToCart(p) {
@@ -82,9 +89,26 @@ export default function KasirPage() {
       [siswa]
    );
 
+   const guruOptions = useMemo(
+      () =>
+         guru
+            .slice()
+            .sort((a, b) => String(a.nip).localeCompare(String(b.nip)))
+            .map((t) => ({
+               value: t.nip,
+               label: `${t.nip} - ${t.nama_guru} (${t.bidang_studi})`,
+               guru: t,
+            })),
+      [guru]
+   );
+
+   const customerOptions = customerType === "siswa" ? siswaOptions : guruOptions;
+   const selectedCustomer = customerType === "siswa" ? selectedSiswa : selectedGuru;
+   const customerLabel = customerType === "siswa" ? "siswa" : "guru";
+
    async function handleProcess() {
-      const studentId = selectedSiswa?.value;
-      if (!studentId) return alert("Pilih siswa terlebih dahulu");
+      const customerId = selectedCustomer?.value;
+      if (!customerId) return alert(`Pilih ${customerLabel} terlebih dahulu`);
       if (cart.length === 0) return alert("Keranjang kosong");
       setLoading(true);
       try {
@@ -94,7 +118,7 @@ export default function KasirPage() {
             .from("transaksi")
             .insert({
                id: trxId,
-               nis_siswa: selectedSiswa,
+               nis_siswa: customerType === "siswa" ? customerId : null,
                metode_pembayaran: paymentMethod,
                status_pembayaran: paymentMethod === "Hutang" ? "Belum Lunas" : "Lunas",
                total_bayar: total,
@@ -121,11 +145,16 @@ export default function KasirPage() {
             await supabase.from("produk").update({ stok: newStok }).eq("id", it.id);
          }
 
-         // if hutang update siswa.total_hutang
          if (paymentMethod === "Hutang") {
-            const siswaObj = selectedSiswa?.siswa;
-            const current = Number(siswaObj?.total_hutang ?? 0);
-            await supabase.from("siswa").update({ total_hutang: current + total }).eq("nis", studentId);
+            if (customerType === "siswa") {
+               const siswaObj = selectedSiswa?.siswa;
+               const current = Number(siswaObj?.total_hutang ?? 0);
+               await supabase.from("siswa").update({ total_hutang: current + total }).eq("nis", customerId);
+            } else {
+               const guruObj = selectedGuru?.guru;
+               const current = Number(guruObj?.total_hutang ?? 0);
+               await supabase.from("guru").update({ total_hutang: current + total }).eq("nip", customerId);
+            }
          }
 
          alert("Transaksi berhasil");
@@ -191,17 +220,40 @@ export default function KasirPage() {
                </div>
 
                <div className="cart__siswa">
-                  <label htmlFor="student-select">Pilih Siswa</label>
+                  <div className="customer-toggle" role="tablist" aria-label="Pilih pelanggan">
+                     <button
+                        type="button"
+                        className={`customer-toggle__button ${customerType === "siswa" ? "customer-toggle__button--active" : ""}`}
+                        onClick={() => {
+                           setCustomerType("siswa");
+                           setSelectedGuru(null);
+                        }}
+                     >
+                        Siswa
+                     </button>
+                     <button
+                        type="button"
+                        className={`customer-toggle__button ${customerType === "guru" ? "customer-toggle__button--active" : ""}`}
+                        onClick={() => {
+                           setCustomerType("guru");
+                           setSelectedSiswa(null);
+                        }}
+                     >
+                        Guru
+                     </button>
+                  </div>
+
+                  <label htmlFor="customer-select">Pilih {customerType === "siswa" ? "Siswa" : "Guru"}</label>
                   <Select
-                     inputId="student-select"
-                     options={siswaOptions}
-                     value={selectedSiswa}
-                     onChange={setSelectedSiswa}
-                     placeholder="Cari dan pilih siswa..."
+                     inputId="customer-select"
+                     options={customerOptions}
+                     value={selectedCustomer}
+                     onChange={customerType === "siswa" ? setSelectedSiswa : setSelectedGuru}
+                     placeholder={customerType === "siswa" ? "Cari dan pilih siswa..." : "Cari dan pilih guru..."}
                      isSearchable
                      className="react-select-container"
                      classNamePrefix="react-select"
-                     noOptionsMessage={() => "Tidak ada siswa"}
+                     noOptionsMessage={() => (customerType === "siswa" ? "Tidak ada siswa" : "Tidak ada guru")}
                   />
                </div>
 

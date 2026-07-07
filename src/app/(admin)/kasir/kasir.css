@@ -3,13 +3,12 @@
    grid-template-columns: 2fr 1fr;
    gap: 24px;
    padding: 20px;
-   height: calc(100vh - 40px);
    box-sizing: border-box;
 }
 
 .pos__left,
 .pos__right {
-   overflow: auto;
+   overflow: visible;
 }
 
 .pos__right {
@@ -131,6 +130,12 @@
    display: flex;
    flex-direction: column;
    gap: 16px;
+   position: sticky;
+   top: 1rem;
+   background: #fff;
+   border: 1px solid #e5e7eb;
+   border-radius: 18px;
+   padding: 16px;
 }
 
 .cart__header {
@@ -141,6 +146,34 @@
 .cart__siswa {
    display: grid;
    gap: 10px;
+}
+
+.customer-toggle {
+   display: flex;
+   gap: 8px;
+   padding: 4px;
+   border-radius: 999px;
+   background: #f1f5f9;
+   width: 100%;
+}
+
+.customer-toggle__button {
+   flex: 1;
+}
+
+.customer-toggle__button {
+   border: none;
+   border-radius: 999px;
+   padding: 8px 12px;
+   background: transparent;
+   color: #475569;
+   font-weight: 600;
+   cursor: pointer;
+}
+
+.customer-toggle__button--active {
+   background: #0ea5a4;
+   color: #fff;
 }
 
 .cart__siswa label {
