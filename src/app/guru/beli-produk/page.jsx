@@ -147,6 +147,12 @@ export default function BeliProdukGuruPage() {
             metode_pembayaran: paymentMethod,
             status_order: "Menunggu",
             status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+            keterangan:
+               paymentMethod === "Saldo"
+                  ? "Menunggu konfirmasi admin untuk pembayaran saldo"
+                  : paymentMethod === "Tunai"
+                     ? "Menunggu konfirmasi admin untuk pembayaran tunai"
+                     : "Menunggu konfirmasi admin untuk hutang",
          });
 
          if (orderError) throw orderError;
@@ -187,7 +193,13 @@ export default function BeliProdukGuruPage() {
             setTeacher((current) => (current ? { ...current, saldo: newSaldo } : current));
          }
 
-         setMessage(paymentMethod === "Saldo" ? "Pesanan berhasil dibuat dan saldo Anda langsung dipotong." : "Pesanan berhasil dibuat!");
+         setMessage(
+            paymentMethod === "Saldo"
+               ? "Pesanan berhasil dibuat dan saldo Anda langsung dipotong."
+               : paymentMethod === "Tunai"
+                  ? "Pesanan berhasil dibuat. Silakan lakukan pembayaran tunai kepada admin."
+                  : "Pesanan berhasil dibuat!"
+         );
          setCartItems([]);
          setOrders((current) => [
             {
@@ -197,6 +209,12 @@ export default function BeliProdukGuruPage() {
                metode_pembayaran: paymentMethod,
                status_order: "Menunggu",
                status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+               keterangan:
+                  paymentMethod === "Saldo"
+                     ? "Pembelian produk menggunakan saldo"
+                     : paymentMethod === "Tunai"
+                        ? "Pembelian produk dengan pembayaran tunai"
+                        : "Menunggu konfirmasi admin untuk hutang",
                source: "order",
             },
             ...current,
@@ -307,6 +325,7 @@ export default function BeliProdukGuruPage() {
                            className="payment-method__select"
                         >
                            <option value="Saldo">Saldo</option>
+                           <option value="Tunai">Tunai</option>
                            <option value="Hutang">Hutang</option>
                         </select>
                      </div>

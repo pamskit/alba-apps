@@ -208,6 +208,40 @@ export default function OrderSiswaPage() {
          return;
       }
 
+      if (order.metode_pembayaran === "Tunai") {
+         setActionLoading(true);
+         try {
+            const operations = [];
+            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
+
+            // Create transaksi entry for tunai confirmation
+            operations.push(
+               supabase.from("transaksi").insert({
+                  id: `trx_tunai_${Date.now()}`,
+                  nis_siswa: order.siswa.nis,
+                  total_bayar: totalHarga,
+                  metode_pembayaran: "Tunai",
+                  status_pembayaran: "Lunas",
+               })
+            );
+
+            const results = await Promise.all(operations);
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
+
+            setMessage("Order tunai berhasil dikonfirmasi dan riwayat tercatat.");
+            await fetchOrders();
+            if (selectedOrderId === order.id) await fetchOrderItems(order.id);
+         } catch (error) {
+            console.error(error);
+            setErrorMessage("Gagal mengonfirmasi order tunai.");
+         } finally {
+            setActionLoading(false);
+         }
+         return;
+      }
+
       await updateOrderStatus(order, { ...updates, status_pembayaran: order.status_pembayaran }, "Order berhasil dikonfirmasi.");
    }
 

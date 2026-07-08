@@ -110,6 +110,16 @@ export default function KasirPage() {
       const customerId = selectedCustomer?.value;
       if (!customerId) return alert(`Pilih ${customerLabel} terlebih dahulu`);
       if (cart.length === 0) return alert("Keranjang kosong");
+
+      // Validate saldo for Saldo payment method
+      if (paymentMethod === "Saldo") {
+         const customerObj = customerType === "siswa" ? selectedSiswa?.siswa : selectedGuru?.guru;
+         const customerSaldo = Number(customerObj?.saldo ?? 0);
+         if (customerSaldo < total) {
+            return alert(`Saldo tidak cukup. Saldo: Rp ${customerSaldo.toLocaleString()}, Total: Rp ${total.toLocaleString()}`);
+         }
+      }
+
       setLoading(true);
       try {
          // create transaksi (generate simple id)
@@ -156,14 +166,25 @@ export default function KasirPage() {
                const current = Number(guruObj?.total_hutang ?? 0);
                await supabase.from("guru").update({ total_hutang: current + total }).eq("nip", customerId);
             }
+         } else if (paymentMethod === "Saldo") {
+            if (customerType === "siswa") {
+               const siswaObj = selectedSiswa?.siswa;
+               const newSaldo = Number(siswaObj?.saldo ?? 0) - total;
+               await supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", customerId);
+            } else {
+               const guruObj = selectedGuru?.guru;
+               const newSaldo = Number(guruObj?.saldo ?? 0) - total;
+               await supabase.from("guru").update({ saldo: newSaldo }).eq("nip", customerId);
+            }
          }
 
          alert("Transaksi berhasil");
          setCart([]);
          await fetchAll();
       } catch (err) {
-         console.error(err);
-         alert("Terjadi kesalahan saat memproses transaksi");
+         console.error("Error detail:", err);
+         const errorMsg = err?.message || err?.error_description || JSON.stringify(err) || "Error tidak diketahui";
+         alert(`Error: ${errorMsg}`);
       } finally {
          setLoading(false);
       }
@@ -284,10 +305,18 @@ export default function KasirPage() {
                         <input type="radio" name="metode" value="QRIS" checked={paymentMethod === "QRIS"} onChange={() => setPaymentMethod("QRIS")} /> QRIS
                      </label>
                      <label style={{ marginLeft: 8 }}>
+                        <input type="radio" name="metode" value="Saldo" checked={paymentMethod === "Saldo"} onChange={() => setPaymentMethod("Saldo")} /> Saldo
+                     </label>
+                     <label style={{ marginLeft: 8 }}>
                         <input type="radio" name="metode" value="Hutang" checked={paymentMethod === "Hutang"} onChange={() => setPaymentMethod("Hutang")} /> Hutang
                      </label>
                   </div>
                   <div className="total">Total: Rp {total.toLocaleString()}</div>
+                  {paymentMethod === "Saldo" && selectedCustomer && (
+                     <div style={{ fontSize: "0.9rem", color: "#666", marginTop: 8 }}>
+                        Saldo tersedia: Rp {Number(customerType === "siswa" ? selectedCustomer.siswa?.saldo : selectedCustomer.guru?.saldo ?? 0).toLocaleString()}
+                     </div>
+                  )}
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                      <button className="btn btn--primary" onClick={handleProcess} disabled={loading}>
                         {loading ? "Memproses..." : "Proses"}

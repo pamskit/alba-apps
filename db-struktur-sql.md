@@ -48,7 +48,7 @@ CREATE TABLE transaksi (
     nis_siswa INT REFERENCES siswa(nis) ON DELETE SET NULL,
     nip_guru INT REFERENCES guru(nip) ON DELETE SET NULL,
     total_bayar INT NOT NULL CHECK (total_bayar >= 0),
-    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Tunai', 'QRIS', 'Hutang', 'Pelunasan')),
+    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Tunai', 'QRIS', 'Hutang', 'Pelunasan', 'Saldo')),
     status_pembayaran TEXT NOT NULL CHECK (status_pembayaran IN ('Lunas', 'Belum Lunas'))
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE order_siswa (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     nis_siswa INT REFERENCES siswa(nis) ON DELETE SET NULL,
     total_harga INT NOT NULL CHECK (total_harga >= 0),
-    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Saldo', 'Hutang')),
+    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Saldo', 'Hutang', 'Tunai')),
     status_order TEXT NOT NULL CHECK (status_order IN ('Menunggu', 'Dikonfirmasi', 'Ditolak')),
     status_pembayaran TEXT NOT NULL CHECK (status_pembayaran IN ('Lunas', 'Belum Lunas')),
     keterangan TEXT
@@ -98,7 +98,7 @@ CREATE TABLE order_guru (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     nip_guru INT REFERENCES guru(nip) ON DELETE SET NULL,
     total_harga INT NOT NULL CHECK (total_harga >= 0),
-    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Saldo', 'Hutang')),
+    metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Saldo', 'Hutang', 'Tunai')),
     status_order TEXT NOT NULL CHECK (status_order IN ('Menunggu', 'Dikonfirmasi', 'Ditolak')),
     status_pembayaran TEXT NOT NULL CHECK (status_pembayaran IN ('Lunas', 'Belum Lunas')),
     keterangan TEXT

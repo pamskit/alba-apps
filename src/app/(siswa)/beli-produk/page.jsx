@@ -149,7 +149,12 @@ export default function BeliProdukPage() {
             metode_pembayaran: paymentMethod,
             status_order: "Menunggu",
             status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
-            keterangan: paymentMethod === "Saldo" ? "Menunggu konfirmasi admin untuk pembayaran saldo" : "Menunggu konfirmasi admin untuk hutang",
+            keterangan:
+               paymentMethod === "Saldo"
+                  ? "Menunggu konfirmasi admin untuk pembayaran saldo"
+                  : paymentMethod === "Tunai"
+                     ? "Menunggu konfirmasi admin untuk pembayaran tunai"
+                     : "Menunggu konfirmasi admin untuk hutang",
          };
 
          const { error: orderError } = await supabase.from("order_siswa").insert(orderPayload);
@@ -190,7 +195,13 @@ export default function BeliProdukPage() {
          }
 
          setCartItems([]);
-         setMessage(paymentMethod === "Saldo" ? "Pesanan berhasil dikirim dan saldo Anda langsung dipotong." : "Pesanan berhasil dikirim ke admin. Silakan tunggu konfirmasi.");
+         setMessage(
+            paymentMethod === "Saldo"
+               ? "Pesanan berhasil dikirim dan saldo Anda langsung dipotong."
+               : paymentMethod === "Tunai"
+                  ? "Pesanan berhasil dikirim. Silakan lakukan pembayaran tunai kepada admin."
+                  : "Pesanan berhasil dikirim ke admin. Silakan tunggu konfirmasi."
+         );
          setOrders((current) => [
             {
                id: orderId,
@@ -199,7 +210,12 @@ export default function BeliProdukPage() {
                metode_pembayaran: paymentMethod,
                status_order: "Menunggu",
                status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
-               keterangan: paymentMethod === "Saldo" ? "Pembelian produk menggunakan saldo" : "Menunggu konfirmasi admin untuk hutang",
+               keterangan:
+                  paymentMethod === "Saldo"
+                     ? "Pembelian produk menggunakan saldo"
+                     : paymentMethod === "Tunai"
+                        ? "Pembelian produk dengan pembayaran tunai"
+                        : "Menunggu konfirmasi admin untuk hutang",
                source: "order",
             },
             ...current,
@@ -305,6 +321,7 @@ export default function BeliProdukPage() {
                            className="payment-method__select"
                         >
                            <option value="Saldo">Saldo</option>
+                           <option value="Tunai">Tunai</option>
                            <option value="Hutang">Hutang</option>
                         </select>
                      </div>
