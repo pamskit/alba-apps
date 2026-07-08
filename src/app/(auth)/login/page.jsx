@@ -53,90 +53,86 @@ function UnifiedLoginContent() {
          return;
       }
 
-      // Check if it's a guru login (NIP format: 4 digits starting with 2)
-      if (/^\d{4}$/.test(normalizedIdentifier) && normalizedIdentifier.startsWith("2")) {
+      // Check if input is numeric (could be guru NIP or siswa NIS)
+      if (/^\d+$/.test(normalizedIdentifier)) {
+         const numericId = Number(normalizedIdentifier);
+
+         // Try guru first
          try {
-            const { data, error } = await supabase
+            const { data: guruData, error: guruError } = await supabase
                .from("guru")
                .select("nip,nama_guru,bidang_studi,password")
-               .eq("nip", Number(normalizedIdentifier))
+               .eq("nip", numericId)
                .maybeSingle();
 
-            if (error) {
-               throw error;
+            if (guruError) {
+               throw guruError;
             }
 
-            if (!data) {
-               alert("NIP guru tidak ditemukan.");
-               setLoading(false);
+            if (guruData) {
+               if (String(guruData.password) !== String(password)) {
+                  alert("Password salah.");
+                  setLoading(false);
+                  return;
+               }
+
+               saveAuthSession({
+                  role: "guru",
+                  nip: guruData.nip,
+                  nama: guruData.nama_guru,
+                  bidang_studi: guruData.bidang_studi,
+               });
+
+               router.replace("/guru/dashboard");
                return;
             }
-
-            if (String(data.password) !== String(password)) {
-               alert("Password salah.");
-               setLoading(false);
-               return;
-            }
-
-            saveAuthSession({
-               role: "guru",
-               nip: data.nip,
-               nama: data.nama_guru,
-               bidang_studi: data.bidang_studi,
-            });
-
-            router.replace("/guru/dashboard");
-            return;
          } catch (error) {
             console.error(error);
             alert("Gagal memeriksa akun guru.");
             setLoading(false);
             return;
          }
-      }
 
-      // Check if it's a siswa login (NIS format: 4 digits starting with 1)
-      if (!/^\d+$/.test(normalizedIdentifier)) {
-         alert("Masukkan NIS siswa atau NIP guru yang valid.");
-         setLoading(false);
-         return;
-      }
+         // If not found in guru, try siswa
+         try {
+            const { data: siswaData, error: siswaError } = await supabase
+               .from("siswa")
+               .select("nis,nama_siswa,kelas,password")
+               .eq("nis", numericId)
+               .maybeSingle();
 
-      try {
-         const { data, error } = await supabase
-            .from("siswa")
-            .select("nis,nama_siswa,kelas,password")
-            .eq("nis", Number(normalizedIdentifier))
-            .maybeSingle();
+            if (siswaError) {
+               throw siswaError;
+            }
 
-         if (error) {
-            throw error;
-         }
+            if (siswaData) {
+               if (String(siswaData.password) !== String(password)) {
+                  alert("Password salah.");
+                  setLoading(false);
+                  return;
+               }
 
-         if (!data) {
-            alert("NIS tidak ditemukan.");
+               saveAuthSession({
+                  role: "siswa",
+                  nis: siswaData.nis,
+                  nama: siswaData.nama_siswa,
+                  kelas: siswaData.kelas,
+               });
+
+               router.replace("/dashboard");
+               return;
+            }
+
+            // Not found in either table
+            alert("NIP guru atau NIS siswa tidak ditemukan.");
             setLoading(false);
-            return;
-         }
-
-         if (String(data.password) !== String(password)) {
-            alert("Password salah.");
+         } catch (error) {
+            console.error(error);
+            alert("Gagal memeriksa akun.");
             setLoading(false);
-            return;
          }
-
-         saveAuthSession({
-            role: "siswa",
-            nis: data.nis,
-            nama: data.nama_siswa,
-            kelas: data.kelas,
-         });
-
-         router.replace("/dashboard");
-      } catch (error) {
-         console.error(error);
-         alert("Gagal memeriksa akun siswa.");
-      } finally {
+      } else {
+         alert("Masukkan NIP guru atau NIS siswa yang valid (hanya angka).");
          setLoading(false);
       }
    }

@@ -1,128 +1,102 @@
-.page-content {
-   display: flex;
-   flex-direction: column;
-   gap: 24px;
-   padding: 20px;
+.siswa-hutang {
+   padding: 1rem;
 }
 
 .page-header {
-   display: flex;
-   flex-direction: column;
-   gap: 8px;
+   margin-bottom: 2rem;
 }
 
 .page-header h1 {
-   margin: 0;
-   font-size: 2rem;
+   font-size: 1.8rem;
+   color: #2c3e50;
+   margin-bottom: 0.5rem;
 }
 
 .page-header p {
-   margin: 0;
-   color: #6b7280;
+   color: #666;
 }
 
-.page-message {
-   padding: 18px;
-   border-radius: 16px;
-   background: #f8fafc;
-   color: #475569;
-   border: 1px solid #e2e8f0;
-}
-
-.page-message--error {
-   background: #fef2f2;
-   color: #b91c1c;
-   border-color: #fecaca;
-}
-
-.hutang-summary-grid {
+.hutang-overview {
    display: grid;
-   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-   gap: 16px;
+   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+   gap: 1.5rem;
+   margin-bottom: 2rem;
 }
 
 .hutang-card {
-   background: #fff;
-   border: 1px solid #e5e7eb;
-   border-radius: 18px;
-   padding: 22px;
-   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
-   display: grid;
-   gap: 10px;
-}
-
-.hutang-card--debt {
-   border-color: #fee2e2;
+   background: white;
+   border: 1px solid #e0e0e0;
+   border-radius: 8px;
+   padding: 1.5rem;
 }
 
 .hutang-card__label {
-   color: #6b7280;
-   font-size: 0.95rem;
-   font-weight: 600;
+   color: #666;
+   font-size: 0.9rem;
+   margin-bottom: 0.5rem;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
 }
 
-.hutang-card__value {
+.hutang-card__amount {
    font-size: 2rem;
-   font-weight: 800;
-   color: #0f172a;
+   font-weight: bold;
+   color: #e74c3c;
 }
 
-.pay-card {
-   background: #fff;
-   border: 1px solid #e5e7eb;
-   border-radius: 18px;
-   padding: 22px;
-   display: grid;
-   gap: 18px;
+.hutang-card__amount--zero {
+   color: #27ae60;
 }
 
-.pay-card__header {
-   display: flex;
-   flex-direction: column;
-   gap: 8px;
+.hutang-form {
+   background: white;
+   border: 1px solid #e0e0e0;
+   border-radius: 8px;
+   padding: 1.5rem;
+   margin-bottom: 2rem;
 }
 
-.pay-card__body {
-   display: grid;
-   gap: 10px;
+.hutang-form__title {
+   font-size: 1.1rem;
+   font-weight: 600;
+   margin-bottom: 1rem;
+   padding-bottom: 1rem;
+   border-bottom: 2px solid #e0e0e0;
 }
 
-.input-field {
+.form-group {
+   margin-bottom: 1rem;
+}
+
+.form-group label {
+   display: block;
+   font-weight: 600;
+   color: #333;
+   margin-bottom: 0.5rem;
+   font-size: 0.9rem;
+}
+
+.form-group input {
    width: 100%;
-   padding: 12px 14px;
-   border: 1px solid #d1d5db;
-   border-radius: 14px;
+   padding: 0.75rem;
+   border: 1px solid #ccc;
+   border-radius: 4px;
    font-size: 1rem;
-   outline: none;
 }
 
-.input-field:focus {
-   border-color: #0ea5a4;
-   box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.12);
+.hutang-history {
+   background: white;
+   border: 1px solid #e0e0e0;
+   border-radius: 8px;
+   padding: 1.5rem;
 }
 
-.hint-text {
-   margin: 0;
-   color: #64748b;
-   font-size: 0.95rem;
-}
-
-.pay-card__actions {
-   display: flex;
-   justify-content: flex-end;
-}
-
-.history-section {
-   display: flex;
-   flex-direction: column;
-   gap: 12px;
-}
-
-.history-table-wrap {
-   overflow-x: auto;
-   border: 1px solid #e5e7eb;
-   border-radius: 14px;
-   background: #fff;
+.hutang-history__title {
+   font-size: 1.1rem;
+   font-weight: 600;
+   margin-bottom: 1rem;
+   padding-bottom: 1rem;
+   border-bottom: 2px solid #e0e0e0;
 }
 
 .history-table {
@@ -130,19 +104,77 @@
    border-collapse: collapse;
 }
 
-.history-table th,
-.history-table td {
-   padding: 14px 16px;
-   text-align: left;
-   border-bottom: 1px solid #f3f4f6;
+.history-table thead {
+   background: #f5f5f5;
 }
 
 .history-table th {
-   background: #f8fafc;
-   color: #475569;
-   font-weight: 700;
+   text-align: left;
+   padding: 0.75rem;
+   font-weight: 600;
+   font-size: 0.85rem;
+   color: #666;
 }
 
-.history-table tr:last-child td {
-   border-bottom: none;
+.history-table td {
+   padding: 0.75rem;
+   border-bottom: 1px solid #f0f0f0;
+   font-size: 0.9rem;
+}
+
+.status-badge {
+   display: inline-block;
+   padding: 0.25rem 0.75rem;
+   border-radius: 4px;
+   font-size: 0.8rem;
+   font-weight: 500;
+}
+
+.status-badge--success {
+   background-color: #d4edda;
+   color: #155724;
+}
+
+.status-badge--error {
+   background-color: #f8d7da;
+   color: #721c24;
+}
+
+.status-pending {
+   background-color: #fef3c7;
+   color: #92400e;
+}
+
+.status-unpaid {
+   background-color: #ffe4ec;
+   color: #9d2b62;
+}
+
+.status-confirmed {
+   background-color: #d4edda;
+   color: #155724;
+}
+
+.status-rejected {
+   background-color: #f8d7da;
+   color: #721c24;
+}
+
+.page-message {
+   padding: 1rem;
+   background: #f5f5f5;
+   border-radius: 4px;
+   color: #666;
+   text-align: center;
+}
+
+.page-message--error {
+   background: #f8d7da;
+   color: #721c24;
+}
+
+@media (max-width: 768px) {
+   .hutang-overview {
+      grid-template-columns: 1fr;
+   }
 }

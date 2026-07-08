@@ -34,7 +34,7 @@ export default function BeliProdukGuruPage() {
                return;
             }
 
-            const [{ data: guruData, error: guruError }, { data: produkData, error: produkError }, { data: ordersData, error: ordersError }] = await Promise.all([
+            const [{ data: guruData, error: guruError }, { data: produkData, error: produkError }, { data: ordersData, error: ordersError }, { data: transaksiData, error: transaksiError }] = await Promise.all([
                supabase
                   .from("guru")
                   .select("nip,nama_guru,saldo,total_hutang")
@@ -45,17 +45,29 @@ export default function BeliProdukGuruPage() {
                   .from("order_guru")
                   .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
                   .eq("nip_guru", nipSession)
-                  .order("created_at", { ascending: false })
-                  .limit(5),
+                  .order("created_at", { ascending: false }),
+               supabase
+                  .from("transaksi")
+                  .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
+                  .eq("nip_guru", nipSession)
+                  .order("created_at", { ascending: false }),
             ]);
 
             if (guruError) throw guruError;
             if (produkError) throw produkError;
             if (ordersError) throw ordersError;
+            if (transaksiError) throw transaksiError;
 
             setTeacher(guruData ?? null);
             setProducts(produkData ?? []);
-            setOrders(ordersData ?? []);
+
+            // Combine order_guru and transaksi, then sort by date (limit to 10 total)
+            const combined = [
+               ...(ordersData ?? []).map((o) => ({ ...o, source: "order" })),
+               ...(transaksiData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "kasir" })),
+            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
+
+            setOrders(combined);
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal memuat halaman Beli Produk.");
@@ -158,21 +170,38 @@ export default function BeliProdukGuruPage() {
                .eq("nip", nipSession);
 
             if (updateError) throw updateError;
+
+            // Create saldo history entry
+            const { error: historyError } = await supabase.from("topup_saldo_guru").insert({
+               nip_guru: nipSession,
+               jumlah: cartTotal,
+               metode: "Pembayaran Saldo",
+               tipe: "Order_Saldo",
+               keterangan: `Pembelian produk order ${orderId}`,
+            });
+
+            if (historyError) {
+               console.error("Warning: Could not record saldo history:", historyError);
+            }
+
             setTeacher((current) => (current ? { ...current, saldo: newSaldo } : current));
          }
 
          setMessage(paymentMethod === "Saldo" ? "Pesanan berhasil dibuat dan saldo Anda langsung dipotong." : "Pesanan berhasil dibuat!");
          setCartItems([]);
+         setOrders((current) => [
+            {
+               id: orderId,
+               created_at: new Date().toISOString(),
+               total_harga: cartTotal,
+               metode_pembayaran: paymentMethod,
+               status_order: "Menunggu",
+               status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+               source: "order",
+            },
+            ...current,
+         ]);
          setTimeout(() => setMessage(""), 3000);
-
-         const { data: ordersData, error: ordersError } = await supabase
-            .from("order_guru")
-            .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
-            .eq("nip_guru", nipSession)
-            .order("created_at", { ascending: false })
-            .limit(5);
-
-         if (!ordersError) setOrders(ordersData ?? []);
       } catch (error) {
          console.error(error);
          setErrorMessage(error.message || "Gagal membuat pesanan.");
@@ -291,9 +320,9 @@ export default function BeliProdukGuruPage() {
          </div>
 
          <div className="orders-section">
-            <div className="orders-section__title">Pesanan Terbaru</div>
+            <div className="orders-section__title">Riwayat Transaksi</div>
             {orders.length === 0 ? (
-               <div style={{ color: "#999", textAlign: "center", padding: "1rem" }}>Tidak ada pesanan.</div>
+               <div style={{ color: "#999", textAlign: "center", padding: "1rem" }}>Tidak ada transaksi.</div>
             ) : (
                <table className="orders-table">
                   <thead>
@@ -303,23 +332,33 @@ export default function BeliProdukGuruPage() {
                         <th>Metode</th>
                         <th>Status Order</th>
                         <th>Status Bayar</th>
+                        <th>Sumber</th>
                         <th>Tanggal</th>
                      </tr>
                   </thead>
                   <tbody>
                      {orders.map((order) => (
-                        <tr key={order.id}>
+                        <tr key={`${order.source}-${order.id}`}>
                            <td>{order.id.substring(0, 12)}</td>
                            <td>Rp {Number(order.total_harga).toLocaleString()}</td>
                            <td>{order.metode_pembayaran}</td>
                            <td>
-                              <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
-                                 {order.status_order}
-                              </span>
+                              {order.source === "order" ? (
+                                 <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
+                                    {order.status_order}
+                                 </span>
+                              ) : (
+                                 <span style={{ color: "#999" }}>-</span>
+                              )}
                            </td>
                            <td>
                               <span className={`status-badge ${order.status_pembayaran === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
                                  {order.status_pembayaran}
+                              </span>
+                           </td>
+                           <td>
+                              <span className={`source-badge source-badge--${order.source}`}>
+                                 {order.source === "order" ? "Pesanan" : "Kasir"}
                               </span>
                            </td>
                            <td>{new Date(order.created_at).toLocaleDateString("id-ID")}</td>

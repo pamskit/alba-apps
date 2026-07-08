@@ -50,7 +50,14 @@
 }
 
 .hutang-page__type {
-   min-width: 200px;
+   min-width: 220px;
+   max-width: 320px;
+   appearance: none;
+   background-image: radial-gradient(circle at right 1.35rem center, transparent 0.2rem, transparent 0.45rem, #0f172a 0.45rem, #0f172a 0.48rem, transparent 0.48rem);
+   background-size: 1rem 1rem;
+   background-position: right 1rem center;
+   background-repeat: no-repeat;
+   padding-right: 2.5rem;
 }
 
 .hutang-page__search {

@@ -13,9 +13,19 @@ export default function SiswaSaldoPage() {
    const [historyItems, setHistoryItems] = useState([]);
    const [loading, setLoading] = useState(true);
    const [errorMessage, setErrorMessage] = useState("");
+   const [paymentAmount, setPaymentAmount] = useState("");
+   const [processingPayment, setProcessingPayment] = useState(false);
+   const [paymentSuccess, setPaymentSuccess] = useState("");
+   const [paymentError, setPaymentError] = useState("");
 
    function formatHistoryDescription(item) {
       if (item.type === "Saldo Masuk") {
+         if (item.tipe === "Refund") {
+            return "Refund - Saldo dikembalikan karena order ditolak";
+         }
+         if (item.tipe === "Hutang_Payment") {
+            return "Pembayaran hutang dari saldo";
+         }
          const baseText = item.method ? `Top-up saldo via ${item.method}` : "Saldo masuk";
          return item.description && item.description.trim()
             ? `${baseText} • ${item.description}`
@@ -23,12 +33,95 @@ export default function SiswaSaldoPage() {
       }
 
       if (item.type === "Saldo Keluar") {
+         if (item.tipe === "Order_Saldo") return "Pembelian produk menggunakan saldo";
+         if (item.tipe === "Hutang_Payment") return "Pelunasan hutang dari saldo";
          if (item.method === "Pembayaran Saldo") return "Pembayaran belanja menggunakan saldo";
          if (item.method === "Pembayaran Hutang") return "Pelunasan hutang dari saldo";
          return item.description || item.method || "Pengeluaran saldo";
       }
 
       return item.description || item.method || "-";
+   }
+
+   async function handlePaymentHutang() {
+      setPaymentError("");
+      setPaymentSuccess("");
+
+      if (!student) return;
+      if (!paymentAmount || parseInt(paymentAmount) <= 0) {
+         setPaymentError("Masukkan nominal pembayaran yang valid");
+         return;
+      }
+
+      if (parseInt(paymentAmount) > student.total_hutang) {
+         setPaymentError("Nominal pembayaran melebihi total hutang");
+         return;
+      }
+
+      if (parseInt(paymentAmount) > student.saldo) {
+         setPaymentError("Saldo tidak cukup untuk pembayaran");
+         return;
+      }
+
+      setProcessingPayment(true);
+      try {
+         const response = await fetch("/api/payment-hutang", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+               userType: "siswa",
+               userId: student.nis,
+               amount: parseInt(paymentAmount),
+               paymentMethod: "Saldo",
+            }),
+         });
+
+         const result = await response.json();
+
+         if (!response.ok) {
+            throw new Error(result.error || "Gagal melakukan pembayaran");
+         }
+
+         setPaymentSuccess("Pembayaran hutang berhasil!");
+         setPaymentAmount("");
+         setStudent((prev) =>
+            prev
+               ? {
+                  ...prev,
+                  saldo: result.newSaldo,
+                  total_hutang: result.newHutang,
+               }
+               : prev
+         );
+
+         // Reload history
+         const { data: historyData } = await supabase
+            .from("topup_saldo")
+            .select("*")
+            .eq("nis_siswa", student.nis)
+            .order("created_at", { ascending: false });
+
+         if (historyData) {
+            const topupHistory = historyData.map((item) => {
+               const isIncoming = ["Top-up", "Refund", "Hutang_Payment"].includes(item.tipe);
+               return {
+                  id: `topup_${item.id}`,
+                  created_at: item.created_at,
+                  amount: Number(item.jumlah),
+                  type: isIncoming ? "Saldo Masuk" : "Saldo Keluar",
+                  method: item.metode,
+                  tipe: item.tipe,
+                  description: item.keterangan || "",
+               };
+            });
+            setHistoryItems(topupHistory.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+         }
+      } catch (error) {
+         console.error(error);
+         setPaymentError(error.message || "Gagal melakukan pembayaran");
+      } finally {
+         setProcessingPayment(false);
+      }
    }
 
    useEffect(() => {
@@ -47,7 +140,7 @@ export default function SiswaSaldoPage() {
 
             const { data: siswaData, error: siswaError } = await supabase
                .from("siswa")
-               .select("nis,nama_siswa,saldo")
+               .select("nis,nama_siswa,saldo,total_hutang,kelas")
                .eq("nis", nisSession)
                .maybeSingle();
 
@@ -61,70 +154,33 @@ export default function SiswaSaldoPage() {
 
             setStudent(activeStudent);
 
-            const [{ data: topupData, error: topupError }, { data: paymentData, error: paymentError }, { data: orderData, error: orderError }] = await Promise.all([
+            const [{ data: topupData, error: topupError }] = await Promise.all([
                supabase
                   .from("topup_saldo")
-                  .select("id,jumlah,metode,keterangan,created_at")
+                  .select("id,jumlah,metode,tipe,keterangan,created_at")
                   .eq("nis_siswa", activeStudent.nis)
-                  .order("created_at", { ascending: false }),
-               supabase
-                  .from("transaksi")
-                  .select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at")
-                  .eq("nis_siswa", activeStudent.nis)
-                  .in("metode_pembayaran", ["Pelunasan", "Saldo"])
-                  .order("created_at", { ascending: false }),
-               supabase
-                  .from("order_siswa")
-                  .select("id,total_harga,metode_pembayaran,status_pembayaran,status_order,created_at")
-                  .eq("nis_siswa", activeStudent.nis)
-                  .eq("metode_pembayaran", "Saldo")
                   .order("created_at", { ascending: false }),
             ]);
 
-            if (topupError || paymentError || orderError) {
+            if (topupError) {
                setHistoryItems([]);
                return;
             }
 
-            if (topupError || paymentError) {
-               setHistoryItems([]);
-               return;
-            }
-
-            const topupHistory = (topupData ?? []).map((item) => ({
-               id: `topup_${item.id}`,
-               created_at: item.created_at,
-               amount: Number(item.jumlah),
-               type: "Saldo Masuk",
-               method: item.metode,
-               description: item.keterangan || "",
-            }));
-
-            const outgoingHistory = (paymentData ?? []).map((item) => ({
-               id: `trx_${item.id}`,
-               created_at: item.created_at,
-               amount: Number(item.total_bayar),
-               type: "Saldo Keluar",
-               method: item.metode_pembayaran === "Saldo" ? "Pembayaran Saldo" : "Pembayaran Hutang",
-               description: item.status_pembayaran || "",
-            }));
-
-            const refundHistory = (orderData ?? [])
-               .filter((item) => item.status_order === "Ditolak" && item.status_pembayaran === "Lunas")
-               .map((item) => ({
-                  id: `refund_${item.id}`,
+            const topupHistory = (topupData ?? []).map((item) => {
+               const isIncoming = ["Top-up", "Refund", "Hutang_Payment"].includes(item.tipe);
+               return {
+                  id: `topup_${item.id}`,
                   created_at: item.created_at,
-                  amount: Number(item.total_harga),
-                  type: "Saldo Masuk",
-                  method: "Refund Order Ditolak",
-                  description: "Saldo dikembalikan karena order ditolak",
-               }));
+                  amount: Number(item.jumlah),
+                  type: isIncoming ? "Saldo Masuk" : "Saldo Keluar",
+                  method: item.metode,
+                  tipe: item.tipe,
+                  description: item.keterangan || "",
+               };
+            });
 
-            setHistoryItems([
-               ...topupHistory,
-               ...outgoingHistory,
-               ...refundHistory,
-            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+            setHistoryItems(topupHistory.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal memuat data saldo.");
@@ -140,7 +196,7 @@ export default function SiswaSaldoPage() {
       <div className="page-content">
          <div className="page-header">
             <h1>Saldo Saya</h1>
-            <p>Pantau saldo dan riwayat transaksi Anda.</p>
+            <p>Pantau saldo dan kelola pembayaran hutang Anda.</p>
          </div>
 
          {loading ? (
@@ -155,9 +211,48 @@ export default function SiswaSaldoPage() {
                   <div className="saldo-card">
                      <div className="saldo-card__label">Saldo Saat Ini</div>
                      <div className="saldo-card__value">Rp {Number(student.saldo ?? 0).toLocaleString()}</div>
-                     <div className="saldo-card__meta">NIS: {student.nis} · {student.nama_siswa}</div>
+                     <div className="saldo-card__meta">NIS: {student.nis} · {student.nama_siswa} ({student.kelas})</div>
                   </div>
+                  {student.total_hutang > 0 && (
+                     <div className="saldo-card saldo-card--hutang">
+                        <div className="saldo-card__label">Total Hutang</div>
+                        <div className="saldo-card__value">Rp {Number(student.total_hutang ?? 0).toLocaleString()}</div>
+                        <div className="saldo-card__meta">Hutang yang perlu dilunasi</div>
+                     </div>
+                  )}
                </div>
+
+               {student.total_hutang > 0 && (
+                  <div className="payment-section">
+                     <div className="payment-section__title">Bayar Hutang Dengan Saldo</div>
+                     {paymentSuccess && <div className="message message--success">{paymentSuccess}</div>}
+                     {paymentError && <div className="message message--error">{paymentError}</div>}
+                     <div className="payment-form">
+                        <div className="form-group">
+                           <label htmlFor="payment-amount">Nominal Pembayaran</label>
+                           <input
+                              id="payment-amount"
+                              type="number"
+                              placeholder="Masukkan nominal..."
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                              min="1"
+                              max={Math.min(student.saldo, student.total_hutang)}
+                           />
+                           <small>
+                              Maksimal: Rp {Number(Math.min(student.saldo, student.total_hutang)).toLocaleString("id-ID")}
+                           </small>
+                        </div>
+                        <button
+                           className="btn btn--primary"
+                           onClick={handlePaymentHutang}
+                           disabled={processingPayment || student.saldo === 0}
+                        >
+                           {processingPayment ? "Memproses..." : "Bayar Sekarang"}
+                        </button>
+                     </div>
+                  </div>
+               )}
 
                <div className="history-section">
                   <div className="history-section__title">Riwayat Saldo</div>

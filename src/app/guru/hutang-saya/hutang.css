@@ -140,6 +140,21 @@
    color: #721c24;
 }
 
+.status-pending {
+   background-color: #fef3c7;
+   color: #92400e;
+}
+
+.status-confirmed {
+   background-color: #d4edda;
+   color: #155724;
+}
+
+.status-rejected {
+   background-color: #f8d7da;
+   color: #721c24;
+}
+
 .page-message {
    padding: 1rem;
    background: #f5f5f5;

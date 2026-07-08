@@ -16,53 +16,69 @@ export default function GuruHutangPage() {
    const [paymentAmount, setPaymentAmount] = useState("");
    const [processing, setProcessing] = useState(false);
 
-   useEffect(() => {
-      async function fetchData() {
-         setLoading(true);
-         setErrorMessage("");
+   async function fetchData() {
+      setLoading(true);
+      setErrorMessage("");
 
-         try {
-            const session = getAuthSession();
-            const nipSession = session?.role === "guru" ? session.nip : null;
-            if (!nipSession) {
-               setTeacher(null);
-               setHutangHistory([]);
-               return;
-            }
-
-            const { data: guruData, error: guruError } = await supabase
-               .from("guru")
-               .select("nip,nama_guru,bidang_studi,saldo,total_hutang")
-               .eq("nip", nipSession)
-               .maybeSingle();
-
-            if (guruError) throw guruError;
-            if (!guruData) {
-               setTeacher(null);
-               setHutangHistory([]);
-               return;
-            }
-
-            setTeacher(guruData);
-            setPaymentAmount(guruData.total_hutang ?? "");
-
-            const { data: historyData, error: historyError } = await supabase
-               .from("order_guru")
-               .select("id,created_at,total_harga,metode_pembayaran,status_pembayaran")
-               .eq("nip_guru", nipSession)
-               .order("created_at", { ascending: false });
-
-            if (historyError) throw historyError;
-            setHutangHistory(historyData ?? []);
-         } catch (error) {
-            console.error(error);
-            setErrorMessage("Gagal memuat data hutang.");
-         } finally {
-            setLoading(false);
+      try {
+         const session = getAuthSession();
+         const nipSession = session?.role === "guru" ? session.nip : null;
+         if (!nipSession) {
+            setTeacher(null);
+            setHutangHistory([]);
+            return;
          }
-      }
 
-      fetchData();
+         const { data: guruData, error: guruError } = await supabase
+            .from("guru")
+            .select("nip,nama_guru,bidang_studi,saldo,total_hutang")
+            .eq("nip", nipSession)
+            .maybeSingle();
+
+         if (guruError) throw guruError;
+         if (!guruData) {
+            setTeacher(null);
+            setHutangHistory([]);
+            return;
+         }
+
+         setTeacher(guruData);
+         setPaymentAmount(guruData.total_hutang ?? "");
+
+         const { data: historyData, error: historyError } = await supabase
+            .from("transaksi")
+            .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
+            .eq("nip_guru", nipSession)
+            .in("metode_pembayaran", ["Hutang", "Pelunasan"])
+            .order("created_at", { ascending: false });
+
+         const { data: pendingOrdersData, error: pendingOrdersError } = await supabase
+            .from("order_guru")
+            .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
+            .eq("nip_guru", nipSession)
+            .eq("metode_pembayaran", "Hutang")
+            .order("created_at", { ascending: false });
+
+         if (historyError) throw historyError;
+         if (pendingOrdersError) throw pendingOrdersError;
+
+         // Combine transaksi and pending orders, then sort by date
+         const combined = [
+            ...(historyData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "transaksi" })),
+            ...(pendingOrdersData ?? []).map((o) => ({ ...o, source: "order" })),
+         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+         setHutangHistory(combined);
+      } catch (error) {
+         console.error(error);
+         setErrorMessage("Gagal memuat data hutang.");
+      } finally {
+         setLoading(false);
+      }
+   }
+
+   useEffect(() => {
+      void fetchData();
    }, []);
 
    async function handlePayHutang() {
@@ -93,8 +109,34 @@ export default function GuruHutangPage() {
 
          if (updateError) throw updateError;
 
+         // Create transaksi entry
+         const trxId = `trx_${Date.now()}`;
+         const { error: insertError } = await supabase.from("transaksi").insert({
+            id: trxId,
+            nip_guru: teacher.nip,
+            metode_pembayaran: "Pelunasan",
+            status_pembayaran: newHutang === 0 ? "Lunas" : "Belum Lunas",
+            total_bayar: amount,
+         });
+
+         if (insertError) throw insertError;
+
+         // Create saldo history entry
+         const { error: historyError } = await supabase.from("topup_saldo_guru").insert({
+            nip_guru: teacher.nip,
+            jumlah: amount,
+            metode: "Pembayaran Hutang",
+            tipe: "Hutang_Payment",
+            keterangan: "Pelunasan hutang dari saldo",
+         });
+
+         if (historyError) {
+            console.error("Warning: Could not record saldo history:", historyError);
+         }
+
          setTeacher({ ...teacher, saldo: newSaldo, total_hutang: newHutang });
          setPaymentAmount(newHutang);
+         await fetchData();
 
          alert("Pembayaran hutang berhasil.");
       } catch (error) {
@@ -169,33 +211,53 @@ export default function GuruHutangPage() {
                      <table className="history-table">
                         <thead>
                            <tr>
-                              <th>ID Pesanan</th>
+                              <th>ID</th>
                               <th>Jumlah</th>
-                              <th>Metode</th>
-                              <th>Status Order</th>
-                              <th>Status Bayar</th>
+                              <th>Tipe</th>
+                              <th>Status</th>
                               <th>Tanggal</th>
                            </tr>
                         </thead>
                         <tbody>
-                           {hutangHistory.map((item) => (
-                              <tr key={item.id}>
-                                 <td>{item.id.substring(0, 12)}</td>
-                                 <td>Rp {Number(item.total_harga).toLocaleString()}</td>
-                                 <td>{item.metode_pembayaran}</td>
-                                 <td>
-                                    <span className={`status-badge ${item.status_order === "Dikonfirmasi" ? "status-badge--success" : ""}`}>
-                                       {item.status_order}
-                                    </span>
-                                 </td>
-                                 <td>
-                                    <span className={`status-badge ${item.status_pembayaran === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
-                                       {item.status_pembayaran}
-                                    </span>
-                                 </td>
-                                 <td>{new Date(item.created_at).toLocaleDateString("id-ID")}</td>
-                              </tr>
-                           ))}
+                           {hutangHistory.map((item) => {
+                              const getHutangLabel = () => {
+                                 if (item.source === "order") {
+                                    if (item.status_order === "Menunggu") return "Hutang Pending";
+                                    if (item.status_order === "Dikonfirmasi") return "Hutang Dikonfirmasi";
+                                    if (item.status_order === "Ditolak") return "Hutang Ditolak";
+                                    return "Ajukan Hutang";
+                                 }
+                                 if (item.metode_pembayaran === "Hutang") return item.status_pembayaran === "Ditolak" ? "Hutang Ditolak" : "Hutang Dikonfirmasi";
+                                 if (item.metode_pembayaran === "Pelunasan") return "Bayar Hutang";
+                                 return item.metode_pembayaran ?? "-";
+                              };
+
+                              const getStatusClass = () => {
+                                 if (item.source === "order") {
+                                    if (item.status_order === "Menunggu") return "status-pending";
+                                    if (item.status_order === "Dikonfirmasi") return "status-confirmed";
+                                    if (item.status_order === "Ditolak") return "status-rejected";
+                                 } else {
+                                    if (item.status_pembayaran === "Ditolak") return "status-rejected";
+                                    return "status-confirmed";
+                                 }
+                                 return "";
+                              };
+
+                              return (
+                                 <tr key={`${item.source}-${item.id}`}>
+                                    <td>{item.id.substring(0, 12)}</td>
+                                    <td>Rp {Number(item.total_harga ?? item.total_bayar).toLocaleString()}</td>
+                                    <td>{getHutangLabel()}</td>
+                                    <td>
+                                       <span className={`status-badge ${getStatusClass()}`}>
+                                          {item.source === "order" ? item.status_order : item.status_pembayaran}
+                                       </span>
+                                    </td>
+                                    <td>{new Date(item.created_at).toLocaleDateString("id-ID")}</td>
+                                 </tr>
+                              );
+                           })}
                         </tbody>
                      </table>
                   )}

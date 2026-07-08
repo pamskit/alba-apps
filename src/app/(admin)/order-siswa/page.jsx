@@ -151,11 +151,16 @@ export default function OrderSiswaPage() {
       if (order.metode_pembayaran === "Saldo") {
          setActionLoading(true);
          try {
-            const { error: orderError } = await supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id);
+            const operations = [];
+            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
 
-            if (orderError) throw orderError;
+            // Saldo was already deducted when order was created, no additional log needed
+            const results = await Promise.all(operations);
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
 
-            setMessage("Order berhasil dikonfirmasi.");
+            setMessage("Order saldo berhasil dikonfirmasi.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
@@ -171,13 +176,27 @@ export default function OrderSiswaPage() {
          const newHutang = currentHutang + totalHarga;
          setActionLoading(true);
          try {
-            const [{ error: updateHutangError }, { error: orderError }] = await Promise.all([
-               supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis),
-               supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id),
-            ]);
-            if (updateHutangError || orderError) throw updateHutangError || orderError;
+            const operations = [];
+            operations.push(supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis));
+            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id));
 
-            setMessage("Order hutang berhasil dikonfirmasi dan total hutang siswa diperbarui.");
+            // Create transaksi entry for hutang confirmation
+            operations.push(
+               supabase.from("transaksi").insert({
+                  id: `trx_hutang_${Date.now()}`,
+                  nis_siswa: order.siswa.nis,
+                  total_bayar: totalHarga,
+                  metode_pembayaran: "Hutang",
+                  status_pembayaran: "Belum Lunas",
+               })
+            );
+
+            const results = await Promise.all(operations);
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
+
+            setMessage("Order hutang berhasil dikonfirmasi, hutang siswa diperbarui, dan riwayat tercatat.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
@@ -204,34 +223,54 @@ export default function OrderSiswaPage() {
          const totalHarga = Number(order.total_harga ?? 0);
          const shouldRefundSaldo = order.metode_pembayaran === "Saldo" && order.status_pembayaran === "Lunas";
          const shouldReduceHutang = order.status_order === "Dikonfirmasi" && order.metode_pembayaran === "Hutang" && order.status_pembayaran === "Belum Lunas";
+         const isHutangPending = order.metode_pembayaran === "Hutang" && order.status_order === "Menunggu";
+
          const updates = {
             status_order: "Ditolak",
             status_pembayaran: order.status_pembayaran === "Lunas" ? "Lunas" : "Belum Lunas",
          };
 
          const operations = [];
+
          if (shouldRefundSaldo) {
             const newSaldo = Number(order.siswa.saldo ?? 0) + totalHarga;
             operations.push(supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", order.siswa.nis));
+
+            // Create saldo history entry for refund
+            operations.push(
+               supabase.from("topup_saldo").insert({
+                  nis_siswa: order.siswa.nis,
+                  jumlah: totalHarga,
+                  metode: "Refund",
+                  tipe: "Refund",
+                  keterangan: `Refund order ditolak ${order.id}`,
+               })
+            );
          }
+
          if (shouldReduceHutang) {
             const newHutang = Math.max(0, Number(order.siswa.total_hutang ?? 0) - totalHarga);
             operations.push(supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis));
          }
+
          operations.push(supabase.from("order_siswa").update(updates).eq("id", order.id));
 
          if (operations.length > 0) {
-            await Promise.all(operations);
+            const results = await Promise.all(operations);
+            // Check for errors
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
          }
 
-         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : "Order ditolak.");
+         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : isHutangPending ? "Order hutang ditolak." : "Order ditolak.");
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);
          }
       } catch (error) {
-         console.error(error);
-         setErrorMessage("Gagal menolak order.");
+         console.error("handleReject error:", error);
+         setErrorMessage(error?.message || "Gagal menolak order.");
       } finally {
          setActionLoading(false);
       }
