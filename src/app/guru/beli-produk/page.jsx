@@ -197,6 +197,7 @@ export default function BeliProdukGuruPage() {
                metode_pembayaran: paymentMethod,
                status_order: "Menunggu",
                status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+               source: "order",
             },
             ...current,
          ]);
