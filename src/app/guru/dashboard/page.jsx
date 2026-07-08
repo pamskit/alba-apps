@@ -7,6 +7,7 @@ import Loading from "@/components/Loading";
 import "./dashboard.css";
 
 const supabase = createClient();
+let hasTriggeredAutoTopup = false;
 
 export default function DashboardGuruPage() {
    const [activeNip, setActiveNip] = useState(null);
@@ -27,6 +28,15 @@ export default function DashboardGuruPage() {
             setTeacher(null);
             setActiveNip(null);
             return;
+         }
+
+         if (!hasTriggeredAutoTopup) {
+            hasTriggeredAutoTopup = true;
+            await fetch("/api/guru/auto-topup", {
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({}),
+            });
          }
 
          const { data: guruData, error: guruError } = await supabase

@@ -10,9 +10,15 @@ export default function GuruLayout({ children }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  function handleLogout() {
-    clearAuthSession();
-    router.replace("/");
+  async function handleLogout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      clearAuthSession();
+      router.replace("/");
+    }
   }
 
   useEffect(() => {

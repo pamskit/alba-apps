@@ -2,10 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase";
 import { clearAuthSession, getAuthSession, saveAuthSession } from "@/utils/auth";
-
-const supabase = createClient();
 
 function UnifiedLoginContent() {
    const router = useRouter();
@@ -39,100 +36,41 @@ function UnifiedLoginContent() {
       event.preventDefault();
       setLoading(true);
 
-      const normalizedIdentifier = String(identifier).trim();
+      try {
+         const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identifier, password }),
+         });
 
-      if (normalizedIdentifier.toLowerCase() === "admin") {
-         if (password !== "password123") {
-            alert("Username atau password admin salah.");
-            setLoading(false);
+         const result = await response.json();
+
+         if (!response.ok) {
+            throw new Error(result.error || "Gagal login");
+         }
+
+         saveAuthSession(result.session);
+
+         if (result.session.role === "admin") {
+            router.replace("/admin");
             return;
          }
 
-         saveAuthSession({ role: "admin", username: "admin" });
-         router.replace("/admin");
-         return;
-      }
-
-      // Check if input is numeric (could be guru NIP or siswa NIS)
-      if (/^\d+$/.test(normalizedIdentifier)) {
-         const numericId = Number(normalizedIdentifier);
-
-         // Try guru first
-         try {
-            const { data: guruData, error: guruError } = await supabase
-               .from("guru")
-               .select("nip,nama_guru,bidang_studi,password")
-               .eq("nip", numericId)
-               .maybeSingle();
-
-            if (guruError) {
-               throw guruError;
-            }
-
-            if (guruData) {
-               if (String(guruData.password) !== String(password)) {
-                  alert("Password salah.");
-                  setLoading(false);
-                  return;
-               }
-
-               saveAuthSession({
-                  role: "guru",
-                  nip: guruData.nip,
-                  nama: guruData.nama_guru,
-                  bidang_studi: guruData.bidang_studi,
-               });
-
-               router.replace("/guru/dashboard");
-               return;
-            }
-         } catch (error) {
-            console.error(error);
-            alert("Gagal memeriksa akun guru.");
-            setLoading(false);
+         if (result.session.role === "guru") {
+            router.replace("/guru/dashboard");
             return;
          }
 
-         // If not found in guru, try siswa
-         try {
-            const { data: siswaData, error: siswaError } = await supabase
-               .from("siswa")
-               .select("nis,nama_siswa,kelas,password")
-               .eq("nis", numericId)
-               .maybeSingle();
-
-            if (siswaError) {
-               throw siswaError;
-            }
-
-            if (siswaData) {
-               if (String(siswaData.password) !== String(password)) {
-                  alert("Password salah.");
-                  setLoading(false);
-                  return;
-               }
-
-               saveAuthSession({
-                  role: "siswa",
-                  nis: siswaData.nis,
-                  nama: siswaData.nama_siswa,
-                  kelas: siswaData.kelas,
-               });
-
-               router.replace("/dashboard");
-               return;
-            }
-
-            // Not found in either table
-            alert("NIP guru atau NIS siswa tidak ditemukan.");
-            setLoading(false);
-         } catch (error) {
-            console.error(error);
-            alert("Gagal memeriksa akun.");
-            setLoading(false);
+         if (result.session.role === "siswa") {
+            router.replace("/dashboard");
+            return;
          }
-      } else {
-         alert("Masukkan NIP guru atau NIS siswa yang valid (hanya angka).");
+
+         alert("Role tidak diketahui.");
+      } catch (error) {
+         console.error(error);
+         alert(error.message || "Terjadi kesalahan saat login.");
+      } finally {
          setLoading(false);
       }
    }
