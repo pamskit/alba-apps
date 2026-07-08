@@ -154,23 +154,13 @@ export default function OrderSiswaPage() {
             const operations = [];
             operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
 
-            // Create topup_saldo entry for order confirmation
-            operations.push(
-               supabase.from("topup_saldo").insert({
-                  nis_siswa: order.siswa.nis,
-                  jumlah: totalHarga,
-                  metode: "Pembayaran Saldo",
-                  tipe: "Order_Saldo",
-                  keterangan: `Order dikonfirmasi ${order.id}`,
-               })
-            );
-
+            // Saldo was already deducted when order was created, no additional log needed
             const results = await Promise.all(operations);
             for (const result of results) {
                if (result.error) throw result.error;
             }
 
-            setMessage("Order saldo berhasil dikonfirmasi dan riwayat tercatat.");
+            setMessage("Order saldo berhasil dikonfirmasi.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {

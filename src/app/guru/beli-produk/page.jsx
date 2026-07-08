@@ -189,16 +189,18 @@ export default function BeliProdukGuruPage() {
 
          setMessage(paymentMethod === "Saldo" ? "Pesanan berhasil dibuat dan saldo Anda langsung dipotong." : "Pesanan berhasil dibuat!");
          setCartItems([]);
+         setOrders((current) => [
+            {
+               id: orderId,
+               created_at: new Date().toISOString(),
+               total_harga: cartTotal,
+               metode_pembayaran: paymentMethod,
+               status_order: "Menunggu",
+               status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+            },
+            ...current,
+         ]);
          setTimeout(() => setMessage(""), 3000);
-
-         const { data: ordersData, error: ordersError } = await supabase
-            .from("order_guru")
-            .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
-            .eq("nip_guru", nipSession)
-            .order("created_at", { ascending: false })
-            .limit(5);
-
-         if (!ordersError) setOrders(ordersData ?? []);
       } catch (error) {
          console.error(error);
          setErrorMessage(error.message || "Gagal membuat pesanan.");

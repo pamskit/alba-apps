@@ -50,6 +50,7 @@ export default function SiswaHutangPage() {
                .from("transaksi")
                .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
                .eq("nis_siswa", nisSession)
+               .in("metode_pembayaran", ["Hutang", "Pelunasan"])
                .order("created_at", { ascending: false });
 
             const { data: pendingOrdersData, error: pendingOrdersError } = await supabase
@@ -83,20 +84,15 @@ export default function SiswaHutangPage() {
    function getHutangTransactionLabel(item) {
       // For order_siswa entries
       if (item.source === "order") {
-         if (item.status_order === "Menunggu") return "Hutang Pending (Menunggu konfirmasi)";
+         if (item.status_order === "Menunggu") return "Hutang Pending";
          if (item.status_order === "Dikonfirmasi") return "Hutang Dikonfirmasi";
          if (item.status_order === "Ditolak") return "Hutang Ditolak";
          return "Ajukan Hutang";
       }
 
       // For transaksi entries
-      if (item.metode_pembayaran === "Hutang") {
-         if (item.status_pembayaran === "Ditolak") return "Hutang Ditolak";
-         return "Hutang Dikonfirmasi";
-      }
+      if (item.metode_pembayaran === "Hutang") return item.status_pembayaran === "Ditolak" ? "Hutang Ditolak" : "Hutang Dikonfirmasi";
       if (item.metode_pembayaran === "Pelunasan") return "Bayar Hutang";
-      if (item.metode_pembayaran === "Tunai") return "Pembayaran Tunai";
-      if (item.metode_pembayaran === "QRIS") return "Pembayaran QRIS";
       return item.metode_pembayaran ?? "-";
    }
 
@@ -154,16 +150,6 @@ export default function SiswaHutangPage() {
 
          setStudent({ ...student, saldo: newSaldo, total_hutang: newHutang });
          setPaymentAmount(newHutang);
-         setHutangHistory((prev) => [
-            {
-               id: trxId,
-               created_at: new Date().toISOString(),
-               total_bayar: amount,
-               metode_pembayaran: "Pelunasan",
-               status_pembayaran: newHutang === 0 ? "Lunas" : "Belum Lunas",
-            },
-            ...prev,
-         ]);
 
          alert("Pembayaran hutang berhasil.");
       } catch (error) {
@@ -175,7 +161,7 @@ export default function SiswaHutangPage() {
    }
 
    return (
-      <div className="page-content">
+      <div className="siswa-hutang">
          <div className="page-header">
             <h1>Hutang Saya</h1>
             <p>Gunakan saldo Anda untuk membayar hutang dan lihat riwayat transaksi.</p>
@@ -189,80 +175,104 @@ export default function SiswaHutangPage() {
             <div className="page-message">Siswa tidak ditemukan.</div>
          ) : (
             <>
-               <div className="hutang-summary-grid">
+               <div className="hutang-overview">
                   <div className="hutang-card">
-                     <span className="hutang-card__label">Saldo saat ini</span>
-                     <strong className="hutang-card__value">Rp {Number(student.saldo ?? 0).toLocaleString()}</strong>
-                  </div>
-                  <div className="hutang-card hutang-card--debt">
-                     <span className="hutang-card__label">Total hutang</span>
-                     <strong className="hutang-card__value">Rp {Number(student.total_hutang ?? 0).toLocaleString()}</strong>
-                  </div>
-               </div>
-
-               <div className="pay-card">
-                  <div className="pay-card__header">
-                     <div>
-                        <h2>Bayar dengan Saldo</h2>
-                        <p>Masukkan nominal pembayaran dari saldo yang tersedia.</p>
+                     <div className="hutang-card__label">Total Hutang</div>
+                     <div className={`hutang-card__amount ${student.total_hutang === 0 ? "hutang-card__amount--zero" : ""}`}>
+                        Rp {Number(student.total_hutang ?? 0).toLocaleString()}
                      </div>
                   </div>
 
-                  <div className="pay-card__body">
-                     <label htmlFor="paymentAmount">Nominal Pembayaran</label>
-                     <input
-                        id="paymentAmount"
-                        type="number"
-                        min="1"
-                        max={student.total_hutang ?? 0}
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                        className="input-field"
-                        placeholder="Masukkan nominal bayar"
-                     />
-                     <p className="hint-text">Saldo tersedia: Rp {Number(student.saldo ?? 0).toLocaleString()}</p>
+                  <div className="hutang-card">
+                     <div className="hutang-card__label">Saldo Tersedia</div>
+                     <div className="hutang-card__amount" style={{ color: "#27ae60" }}>
+                        Rp {Number(student.saldo ?? 0).toLocaleString()}
+                     </div>
                   </div>
+               </div>
 
-                  <div className="pay-card__actions">
-                     <button className="btn" onClick={handlePayHutang} disabled={processing || Number(student.total_hutang) === 0}>
+               {student.total_hutang > 0 && (
+                  <div className="hutang-form">
+                     <div className="hutang-form__title">Bayar Hutang</div>
+                     <div className="form-group">
+                        <label>Nominal Pembayaran</label>
+                        <input
+                           type="number"
+                           value={paymentAmount}
+                           onChange={(e) => setPaymentAmount(e.target.value)}
+                           min="0"
+                           max={student.total_hutang}
+                           disabled={processing}
+                        />
+                     </div>
+                     <button
+                        onClick={handlePayHutang}
+                        disabled={processing}
+                        className="btn btn--primary"
+                        style={{ width: "100%" }}
+                     >
                         {processing ? "Memproses..." : "Bayar Hutang"}
                      </button>
                   </div>
-               </div>
+               )}
 
-               <div className="history-section">
-                  <h2>Riwayat Hutang</h2>
-                  <p>Catatan transaksi hutang dan pembayaran, termasuk ajukan hutang dan pelunasan.</p>
-
+               <div className="hutang-history">
+                  <div className="hutang-history__title">Riwayat Pesanan dengan Hutang</div>
                   {hutangHistory.length === 0 ? (
-                     <div className="page-message">Belum ada riwayat hutang.</div>
+                     <div className="page-message">Tidak ada riwayat hutang.</div>
                   ) : (
-                     <div className="history-table-wrap">
-                        <table className="history-table">
-                           <thead>
-                              <tr>
-                                 <th>Tanggal</th>
-                                 <th>Jumlah</th>
-                                 <th>Tipe</th>
-                                 <th>Status</th>
-                              </tr>
-                           </thead>
-                           <tbody>
-                              {hutangHistory.map((item) => (
+                     <table className="history-table">
+                        <thead>
+                           <tr>
+                              <th>ID</th>
+                              <th>Jumlah</th>
+                              <th>Tipe</th>
+                              <th>Status</th>
+                              <th>Tanggal</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {hutangHistory.map((item) => {
+                              const getHutangLabel = () => {
+                                 if (item.source === "order") {
+                                    if (item.status_order === "Menunggu") return "Hutang Pending";
+                                    if (item.status_order === "Dikonfirmasi") return "Hutang Dikonfirmasi";
+                                    if (item.status_order === "Ditolak") return "Hutang Ditolak";
+                                    return "Ajukan Hutang";
+                                 }
+                                 if (item.metode_pembayaran === "Hutang") return item.status_pembayaran === "Ditolak" ? "Hutang Ditolak" : "Hutang Dikonfirmasi";
+                                 if (item.metode_pembayaran === "Pelunasan") return "Bayar Hutang";
+                                 return item.metode_pembayaran ?? "-";
+                              };
+
+                              const getStatusClass = () => {
+                                 if (item.source === "order") {
+                                    if (item.status_order === "Menunggu") return "status-pending";
+                                    if (item.status_order === "Dikonfirmasi") return "status-confirmed";
+                                    if (item.status_order === "Ditolak") return "status-rejected";
+                                 } else {
+                                    if (item.status_pembayaran === "Ditolak") return "status-rejected";
+                                    return "status-confirmed";
+                                 }
+                                 return "";
+                              };
+
+                              return (
                                  <tr key={`${item.source}-${item.id}`}>
-                                    <td>{new Date(item.created_at).toLocaleString("id-ID")}</td>
+                                    <td>{item.id.substring(0, 12)}</td>
                                     <td>Rp {Number(item.total_harga ?? item.total_bayar).toLocaleString()}</td>
-                                    <td>{getHutangTransactionLabel(item)}</td>
+                                    <td>{getHutangLabel()}</td>
                                     <td>
-                                       <span className={`status-badge ${item.source === "order" ? (item.status_order === "Menunggu" ? "status-pending" : item.status_order === "Dikonfirmasi" ? "status-confirmed" : "status-rejected") : (item.status_pembayaran === "Ditolak" ? "status-rejected" : "status-confirmed")}`}>
+                                       <span className={`status-badge ${getStatusClass()}`}>
                                           {item.source === "order" ? item.status_order : item.status_pembayaran}
                                        </span>
                                     </td>
+                                    <td>{new Date(item.created_at).toLocaleDateString("id-ID")}</td>
                                  </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                     </div>
+                              );
+                           })}
+                        </tbody>
+                     </table>
                   )}
                </div>
             </>

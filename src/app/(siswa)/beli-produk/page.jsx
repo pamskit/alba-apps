@@ -198,7 +198,9 @@ export default function BeliProdukPage() {
                total_harga: cartTotal,
                metode_pembayaran: paymentMethod,
                status_order: "Menunggu",
-               status_pembayaran: "Belum Lunas",
+               status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+               keterangan: paymentMethod === "Saldo" ? "Pembelian produk menggunakan saldo" : "Menunggu konfirmasi admin untuk hutang",
+               source: "order",
             },
             ...current,
          ]);

@@ -50,6 +50,7 @@ export default function GuruHutangPage() {
                .from("transaksi")
                .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
                .eq("nip_guru", nipSession)
+               .in("metode_pembayaran", ["Hutang", "Pelunasan"])
                .order("created_at", { ascending: false });
 
             const { data: pendingOrdersData, error: pendingOrdersError } = await supabase

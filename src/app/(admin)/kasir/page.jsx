@@ -119,6 +119,7 @@ export default function KasirPage() {
             .insert({
                id: trxId,
                nis_siswa: customerType === "siswa" ? customerId : null,
+               nip_guru: customerType === "guru" ? customerId : null,
                metode_pembayaran: paymentMethod,
                status_pembayaran: paymentMethod === "Hutang" ? "Belum Lunas" : "Lunas",
                total_bayar: total,
