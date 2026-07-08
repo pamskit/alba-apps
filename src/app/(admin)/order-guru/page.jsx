@@ -240,19 +240,6 @@ export default function OrderGuruPage() {
             operations.push(supabase.from("guru").update({ total_hutang: newHutang }).eq("nip", order.guru.nip));
          }
 
-         // Create transaksi entry for hutang rejection (if order is still pending)
-         if (isHutangPending) {
-            operations.push(
-               supabase.from("transaksi").insert({
-                  id: `trx_reject_guru_${Date.now()}`,
-                  nip_guru: order.guru.nip,
-                  total_bayar: totalHarga,
-                  metode_pembayaran: "Hutang",
-                  status_pembayaran: "Ditolak",
-               })
-            );
-         }
-
          operations.push(supabase.from("order_guru").update(updates).eq("id", order.id));
 
          if (operations.length > 0) {
@@ -263,14 +250,14 @@ export default function OrderGuruPage() {
             }
          }
 
-         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo guru dikembalikan." : isHutangPending ? "Order hutang ditolak dan tercatat dalam riwayat." : "Order ditolak.");
+         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo guru dikembalikan." : isHutangPending ? "Order hutang ditolak." : "Order ditolak.");
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);
          }
       } catch (error) {
-         console.error(error);
-         setErrorMessage("Gagal menolak order.");
+         console.error("handleReject error:", error);
+         setErrorMessage(error?.message || "Gagal menolak order.");
       } finally {
          setActionLoading(false);
       }

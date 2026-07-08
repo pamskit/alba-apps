@@ -16,69 +16,69 @@ export default function SiswaHutangPage() {
    const [paymentAmount, setPaymentAmount] = useState("");
    const [processing, setProcessing] = useState(false);
 
-   useEffect(() => {
-      async function fetchData() {
-         setLoading(true);
-         setErrorMessage("");
+   async function fetchData() {
+      setLoading(true);
+      setErrorMessage("");
 
-         try {
-            const session = getAuthSession();
-            const nisSession = session?.role === "siswa" ? session.nis : null;
-            if (!nisSession) {
-               setStudent(null);
-               setHutangHistory([]);
-               return;
-            }
-
-            const { data: siswaData, error: siswaError } = await supabase
-               .from("siswa")
-               .select("nis,nama_siswa,kelas,saldo,total_hutang")
-               .eq("nis", nisSession)
-               .maybeSingle();
-
-            if (siswaError) throw siswaError;
-            if (!siswaData) {
-               setStudent(null);
-               setHutangHistory([]);
-               return;
-            }
-
-            setStudent(siswaData);
-            setPaymentAmount(siswaData.total_hutang ?? "");
-
-            const { data: historyData, error: historyError } = await supabase
-               .from("transaksi")
-               .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
-               .eq("nis_siswa", nisSession)
-               .in("metode_pembayaran", ["Hutang", "Pelunasan"])
-               .order("created_at", { ascending: false });
-
-            const { data: pendingOrdersData, error: pendingOrdersError } = await supabase
-               .from("order_siswa")
-               .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
-               .eq("nis_siswa", nisSession)
-               .eq("metode_pembayaran", "Hutang")
-               .order("created_at", { ascending: false });
-
-            if (historyError) throw historyError;
-            if (pendingOrdersError) throw pendingOrdersError;
-
-            // Combine transaksi and pending orders, then sort by date
-            const combined = [
-               ...(historyData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "transaksi" })),
-               ...(pendingOrdersData ?? []).map((o) => ({ ...o, source: "order" })),
-            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            setHutangHistory(combined);
-         } catch (error) {
-            console.error(error);
-            setErrorMessage("Gagal memuat data hutang.");
-         } finally {
-            setLoading(false);
+      try {
+         const session = getAuthSession();
+         const nisSession = session?.role === "siswa" ? session.nis : null;
+         if (!nisSession) {
+            setStudent(null);
+            setHutangHistory([]);
+            return;
          }
-      }
 
-      fetchData();
+         const { data: siswaData, error: siswaError } = await supabase
+            .from("siswa")
+            .select("nis,nama_siswa,kelas,saldo,total_hutang")
+            .eq("nis", nisSession)
+            .maybeSingle();
+
+         if (siswaError) throw siswaError;
+         if (!siswaData) {
+            setStudent(null);
+            setHutangHistory([]);
+            return;
+         }
+
+         setStudent(siswaData);
+         setPaymentAmount(siswaData.total_hutang ?? "");
+
+         const { data: historyData, error: historyError } = await supabase
+            .from("transaksi")
+            .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
+            .eq("nis_siswa", nisSession)
+            .in("metode_pembayaran", ["Hutang", "Pelunasan"])
+            .order("created_at", { ascending: false });
+
+         const { data: pendingOrdersData, error: pendingOrdersError } = await supabase
+            .from("order_siswa")
+            .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
+            .eq("nis_siswa", nisSession)
+            .eq("metode_pembayaran", "Hutang")
+            .order("created_at", { ascending: false });
+
+         if (historyError) throw historyError;
+         if (pendingOrdersError) throw pendingOrdersError;
+
+         // Combine transaksi and pending orders, then sort by date
+         const combined = [
+            ...(historyData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "transaksi" })),
+            ...(pendingOrdersData ?? []).map((o) => ({ ...o, source: "order" })),
+         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+         setHutangHistory(combined);
+      } catch (error) {
+         console.error(error);
+         setErrorMessage("Gagal memuat data hutang.");
+      } finally {
+         setLoading(false);
+      }
+   }
+
+   useEffect(() => {
+      void fetchData();
    }, []);
 
    function getHutangTransactionLabel(item) {
@@ -150,6 +150,7 @@ export default function SiswaHutangPage() {
 
          setStudent({ ...student, saldo: newSaldo, total_hutang: newHutang });
          setPaymentAmount(newHutang);
+         await fetchData();
 
          alert("Pembayaran hutang berhasil.");
       } catch (error) {
@@ -252,6 +253,7 @@ export default function SiswaHutangPage() {
                                     if (item.status_order === "Ditolak") return "status-rejected";
                                  } else {
                                     if (item.status_pembayaran === "Ditolak") return "status-rejected";
+                                    if (item.status_pembayaran === "Belum Lunas") return "status-unpaid";
                                     return "status-confirmed";
                                  }
                                  return "";

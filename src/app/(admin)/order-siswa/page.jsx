@@ -253,19 +253,6 @@ export default function OrderSiswaPage() {
             operations.push(supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis));
          }
 
-         // Create transaksi entry for hutang rejection (if order is still pending)
-         if (isHutangPending) {
-            operations.push(
-               supabase.from("transaksi").insert({
-                  id: `trx_reject_${Date.now()}`,
-                  nis_siswa: order.siswa.nis,
-                  total_bayar: totalHarga,
-                  metode_pembayaran: "Hutang",
-                  status_pembayaran: "Ditolak",
-               })
-            );
-         }
-
          operations.push(supabase.from("order_siswa").update(updates).eq("id", order.id));
 
          if (operations.length > 0) {
@@ -276,14 +263,14 @@ export default function OrderSiswaPage() {
             }
          }
 
-         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : isHutangPending ? "Order hutang ditolak dan tercatat dalam riwayat." : "Order ditolak.");
+         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : isHutangPending ? "Order hutang ditolak." : "Order ditolak.");
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);
          }
       } catch (error) {
-         console.error(error);
-         setErrorMessage("Gagal menolak order.");
+         console.error("handleReject error:", error);
+         setErrorMessage(error?.message || "Gagal menolak order.");
       } finally {
          setActionLoading(false);
       }

@@ -145,6 +145,11 @@
    color: #92400e;
 }
 
+.status-unpaid {
+   background-color: #ffe4ec;
+   color: #9d2b62;
+}
+
 .status-confirmed {
    background-color: #d4edda;
    color: #155724;

@@ -91,7 +91,7 @@ export default function BukuHutangPage() {
          const trxId = `trx_${Date.now()}`;
          const insertData = {
             id: trxId,
-            metode_pembayaran: paymentMethod,
+            metode_pembayaran: "Pelunasan",
             status_pembayaran: amount >= Number(selectedEntry.total_hutang) ? "Lunas" : "Belum Lunas",
             total_bayar: amount,
          };
