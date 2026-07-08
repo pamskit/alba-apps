@@ -140,11 +140,26 @@ export default function OrderGuruPage() {
       if (order.metode_pembayaran === "Saldo") {
          setActionLoading(true);
          try {
-            const { error: orderError } = await supabase.from("order_guru").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id);
+            const operations = [];
+            operations.push(supabase.from("order_guru").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
 
-            if (orderError) throw orderError;
+            // Create topup_saldo_guru entry for order confirmation
+            operations.push(
+               supabase.from("topup_saldo_guru").insert({
+                  nip_guru: order.guru.nip,
+                  jumlah: totalHarga,
+                  metode: "Pembayaran Saldo",
+                  tipe: "Order_Saldo",
+                  keterangan: `Order dikonfirmasi ${order.id}`,
+               })
+            );
 
-            setMessage("Order berhasil dikonfirmasi.");
+            const results = await Promise.all(operations);
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
+
+            setMessage("Order saldo berhasil dikonfirmasi dan riwayat tercatat.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
@@ -160,14 +175,27 @@ export default function OrderGuruPage() {
          const newHutang = currentHutang + totalHarga;
          setActionLoading(true);
          try {
-            const [{ error: updateHutangError }, { error: orderError }] = await Promise.all([
-               supabase.from("guru").update({ total_hutang: newHutang }).eq("nip", order.guru.nip),
-               supabase.from("order_guru").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id),
-            ]);
+            const operations = [];
+            operations.push(supabase.from("guru").update({ total_hutang: newHutang }).eq("nip", order.guru.nip));
+            operations.push(supabase.from("order_guru").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id));
 
-            if (updateHutangError || orderError) throw updateHutangError || orderError;
+            // Create transaksi entry for hutang confirmation
+            operations.push(
+               supabase.from("transaksi").insert({
+                  id: `trx_hutang_guru_${Date.now()}`,
+                  nip_guru: order.guru.nip,
+                  total_bayar: totalHarga,
+                  metode_pembayaran: "Hutang",
+                  status_pembayaran: "Belum Lunas",
+               })
+            );
 
-            setMessage("Order hutang berhasil dikonfirmasi dan total hutang guru diperbarui.");
+            const results = await Promise.all(operations);
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
+
+            setMessage("Order hutang berhasil dikonfirmasi, hutang guru diperbarui, dan riwayat tercatat.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
@@ -194,6 +222,8 @@ export default function OrderGuruPage() {
          const totalHarga = Number(order.total_harga ?? 0);
          const shouldRefundSaldo = order.metode_pembayaran === "Saldo" && order.status_pembayaran === "Lunas";
          const shouldReduceHutang = order.status_order === "Dikonfirmasi" && order.metode_pembayaran === "Hutang" && order.status_pembayaran === "Belum Lunas";
+         const isHutangPending = order.metode_pembayaran === "Hutang" && order.status_order === "Menunggu";
+
          const updates = {
             status_order: "Ditolak",
             status_pembayaran: order.status_pembayaran === "Lunas" ? "Lunas" : "Belum Lunas",
@@ -203,18 +233,47 @@ export default function OrderGuruPage() {
          if (shouldRefundSaldo) {
             const newSaldo = Number(order.guru.saldo ?? 0) + totalHarga;
             operations.push(supabase.from("guru").update({ saldo: newSaldo }).eq("nip", order.guru.nip));
+
+            // Create saldo history entry for refund
+            operations.push(
+               supabase.from("topup_saldo_guru").insert({
+                  nip_guru: order.guru.nip,
+                  jumlah: totalHarga,
+                  metode: "Refund",
+                  tipe: "Refund",
+                  keterangan: `Refund order ditolak ${order.id}`,
+               })
+            );
          }
          if (shouldReduceHutang) {
             const newHutang = Math.max(0, Number(order.guru.total_hutang ?? 0) - totalHarga);
             operations.push(supabase.from("guru").update({ total_hutang: newHutang }).eq("nip", order.guru.nip));
          }
+
+         // Create transaksi entry for hutang rejection (if order is still pending)
+         if (isHutangPending) {
+            operations.push(
+               supabase.from("transaksi").insert({
+                  id: `trx_reject_guru_${Date.now()}`,
+                  nip_guru: order.guru.nip,
+                  total_bayar: totalHarga,
+                  metode_pembayaran: "Hutang",
+                  status_pembayaran: "Ditolak",
+               })
+            );
+         }
+
          operations.push(supabase.from("order_guru").update(updates).eq("id", order.id));
 
          if (operations.length > 0) {
-            await Promise.all(operations);
+            const results = await Promise.all(operations);
+            // Check for errors
+            for (const result of results) {
+               if (result.error) throw result.error;
+            }
          }
 
-         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo guru dikembalikan." : "Order ditolak.");
+         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo guru dikembalikan." : isHutangPending ? "Order hutang ditolak dan tercatat dalam riwayat." : "Order ditolak.");
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);

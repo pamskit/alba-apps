@@ -146,3 +146,26 @@
 .history-table tr:last-child td {
    border-bottom: none;
 }
+
+.status-badge {
+   display: inline-block;
+   padding: 0.35rem 0.85rem;
+   border-radius: 6px;
+   font-size: 0.8rem;
+   font-weight: 600;
+}
+
+.status-pending {
+   background-color: #fef3c7;
+   color: #92400e;
+}
+
+.status-confirmed {
+   background-color: #d1fae5;
+   color: #065f46;
+}
+
+.status-rejected {
+   background-color: #fee2e2;
+   color: #991b1b;
+}

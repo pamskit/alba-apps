@@ -50,6 +50,20 @@ export default function AdminTopupSaldoPage() {
       setGuru(data ?? []);
    }
 
+   const siswaOptions = siswa.map((item) => ({
+      value: item.nis,
+      label: `${item.nis} - ${item.nama_siswa} (${item.kelas}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`,
+   }));
+
+   const guruOptions = guru.map((item) => ({
+      value: item.nip,
+      label: `${item.nip} - ${item.nama_guru} (${item.bidang_studi ?? "-"}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`,
+   }));
+
+   const selectedOption = selectedType === "siswa"
+      ? siswaOptions.find((opt) => opt.value === Number(selectedSiswa))
+      : guruOptions.find((opt) => opt.value === Number(selectedGuru));
+
    async function handleTopup(event) {
       event.preventDefault();
       const amountValue = Number(amount);
@@ -119,7 +133,15 @@ export default function AdminTopupSaldoPage() {
             <div className="form-row">
                <label>
                   Tipe Akun
-                  <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+                  <select
+                     value={selectedType}
+                     onChange={(e) => {
+                        setSelectedType(e.target.value);
+                        setSelectedSiswa("");
+                        setSelectedGuru("");
+                     }}
+                     className="form-select"
+                  >
                      <option value="siswa">Siswa</option>
                      <option value="guru">Guru</option>
                   </select>
@@ -130,25 +152,20 @@ export default function AdminTopupSaldoPage() {
                <label>
                   Pilih {selectedType === "siswa" ? "Siswa" : "Guru"}
                   <Select
-                     value={selectedType === "siswa" ? siswa.find((item) => String(item.nis) === String(selectedSiswa)) : guru.find((item) => String(item.nip) === String(selectedGuru)) || null}
-                     onChange={(value) => {
+                     value={selectedOption || null}
+                     onChange={(option) => {
                         if (selectedType === "siswa") {
-                           setSelectedSiswa(value?.value || "");
+                           setSelectedSiswa(option?.value || "");
                         } else {
-                           setSelectedGuru(value?.value || "");
+                           setSelectedGuru(option?.value || "");
                         }
                      }}
-                     options={(selectedType === "siswa" ? siswa : guru).map((item) => ({
-                        value: selectedType === "siswa" ? item.nis : item.nip,
-                        label:
-                           selectedType === "siswa"
-                              ? `${item.nis} - ${item.nama_siswa} (${item.kelas}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`
-                              : `${item.nip} - ${item.nama_guru} (${item.bidang_studi ?? "-"}) - Saldo: Rp ${Number(item.saldo ?? 0).toLocaleString()}`,
-                     }))}
-                     placeholder="Cari dan pilih..."
+                     options={selectedType === "siswa" ? siswaOptions : guruOptions}
+                     placeholder={`Cari dan pilih ${selectedType === "siswa" ? "siswa" : "guru"}...`}
                      isClearable
                      className="react-select-container"
                      classNamePrefix="react-select"
+                     noOptionsMessage={() => `Tidak ada ${selectedType === "siswa" ? "siswa" : "guru"} ditemukan`}
                   />
                </label>
             </div>
@@ -156,14 +173,24 @@ export default function AdminTopupSaldoPage() {
             <div className="form-row">
                <label>
                   Jumlah Top-Up
-                  <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Masukkan jumlah" />
+                  <input
+                     type="number"
+                     min="1"
+                     value={amount}
+                     onChange={(e) => setAmount(e.target.value)}
+                     placeholder="Masukkan jumlah"
+                  />
                </label>
             </div>
 
             <div className="form-row">
                <label>
-                  Metode
-                  <select value={method} onChange={(e) => setMethod(e.target.value)}>
+                  Metode Pembayaran
+                  <select
+                     value={method}
+                     onChange={(e) => setMethod(e.target.value)}
+                     className="form-select"
+                  >
                      <option value="Tunai">Tunai</option>
                      <option value="Transfer">Transfer</option>
                      <option value="Lainnya">Lainnya</option>
@@ -174,7 +201,12 @@ export default function AdminTopupSaldoPage() {
             <div className="form-row">
                <label>
                   Keterangan untuk riwayat
-                  <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Contoh: top-up awal, pembayaran tunai, transfer bank" />
+                  <input
+                     type="text"
+                     value={note}
+                     onChange={(e) => setNote(e.target.value)}
+                     placeholder="Contoh: top-up awal, pembayaran tunai, transfer bank"
+                  />
                </label>
                <p className="hint-text">Catatan ini akan muncul di riwayat saldo pengguna agar lebih mudah dipahami.</p>
             </div>

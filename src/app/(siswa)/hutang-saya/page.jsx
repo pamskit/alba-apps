@@ -52,8 +52,23 @@ export default function SiswaHutangPage() {
                .eq("nis_siswa", nisSession)
                .order("created_at", { ascending: false });
 
+            const { data: pendingOrdersData, error: pendingOrdersError } = await supabase
+               .from("order_siswa")
+               .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
+               .eq("nis_siswa", nisSession)
+               .eq("metode_pembayaran", "Hutang")
+               .order("created_at", { ascending: false });
+
             if (historyError) throw historyError;
-            setHutangHistory(historyData ?? []);
+            if (pendingOrdersError) throw pendingOrdersError;
+
+            // Combine transaksi and pending orders, then sort by date
+            const combined = [
+               ...(historyData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "transaksi" })),
+               ...(pendingOrdersData ?? []).map((o) => ({ ...o, source: "order" })),
+            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            setHutangHistory(combined);
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal memuat data hutang.");
@@ -66,7 +81,19 @@ export default function SiswaHutangPage() {
    }, []);
 
    function getHutangTransactionLabel(item) {
-      if (item.metode_pembayaran === "Hutang") return "Ajukan Hutang";
+      // For order_siswa entries
+      if (item.source === "order") {
+         if (item.status_order === "Menunggu") return "Hutang Pending (Menunggu konfirmasi)";
+         if (item.status_order === "Dikonfirmasi") return "Hutang Dikonfirmasi";
+         if (item.status_order === "Ditolak") return "Hutang Ditolak";
+         return "Ajukan Hutang";
+      }
+
+      // For transaksi entries
+      if (item.metode_pembayaran === "Hutang") {
+         if (item.status_pembayaran === "Ditolak") return "Hutang Ditolak";
+         return "Hutang Dikonfirmasi";
+      }
       if (item.metode_pembayaran === "Pelunasan") return "Bayar Hutang";
       if (item.metode_pembayaran === "Tunai") return "Pembayaran Tunai";
       if (item.metode_pembayaran === "QRIS") return "Pembayaran QRIS";
@@ -111,6 +138,19 @@ export default function SiswaHutangPage() {
          });
 
          if (insertError) throw insertError;
+
+         // Create saldo history entry
+         const { error: historyError } = await supabase.from("topup_saldo").insert({
+            nis_siswa: student.nis,
+            jumlah: amount,
+            metode: "Pembayaran Hutang",
+            tipe: "Hutang_Payment",
+            keterangan: "Pelunasan hutang dari saldo",
+         });
+
+         if (historyError) {
+            console.error("Warning: Could not record saldo history:", historyError);
+         }
 
          setStudent({ ...student, saldo: newSaldo, total_hutang: newHutang });
          setPaymentAmount(newHutang);
@@ -209,11 +249,15 @@ export default function SiswaHutangPage() {
                            </thead>
                            <tbody>
                               {hutangHistory.map((item) => (
-                                 <tr key={item.id}>
+                                 <tr key={`${item.source}-${item.id}`}>
                                     <td>{new Date(item.created_at).toLocaleString("id-ID")}</td>
-                                    <td>Rp {Number(item.total_bayar).toLocaleString()}</td>
+                                    <td>Rp {Number(item.total_harga ?? item.total_bayar).toLocaleString()}</td>
                                     <td>{getHutangTransactionLabel(item)}</td>
-                                    <td>{item.status_pembayaran}</td>
+                                    <td>
+                                       <span className={`status-badge ${item.source === "order" ? (item.status_order === "Menunggu" ? "status-pending" : item.status_order === "Dikonfirmasi" ? "status-confirmed" : "status-rejected") : (item.status_pembayaran === "Ditolak" ? "status-rejected" : "status-confirmed")}`}>
+                                          {item.source === "order" ? item.status_order : item.status_pembayaran}
+                                       </span>
+                                    </td>
                                  </tr>
                               ))}
                            </tbody>

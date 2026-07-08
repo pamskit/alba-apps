@@ -16,6 +16,9 @@ export default function SiswaSaldoPage() {
 
    function formatHistoryDescription(item) {
       if (item.type === "Saldo Masuk") {
+         if (item.tipe === "Refund") {
+            return "Refund - Saldo dikembalikan karena order ditolak";
+         }
          const baseText = item.method ? `Top-up saldo via ${item.method}` : "Saldo masuk";
          return item.description && item.description.trim()
             ? `${baseText} • ${item.description}`
@@ -23,6 +26,8 @@ export default function SiswaSaldoPage() {
       }
 
       if (item.type === "Saldo Keluar") {
+         if (item.tipe === "Order_Saldo") return "Pembelian produk menggunakan saldo";
+         if (item.tipe === "Hutang_Payment") return "Pelunasan hutang dari saldo";
          if (item.method === "Pembayaran Saldo") return "Pembayaran belanja menggunakan saldo";
          if (item.method === "Pembayaran Hutang") return "Pelunasan hutang dari saldo";
          return item.description || item.method || "Pengeluaran saldo";
@@ -61,70 +66,33 @@ export default function SiswaSaldoPage() {
 
             setStudent(activeStudent);
 
-            const [{ data: topupData, error: topupError }, { data: paymentData, error: paymentError }, { data: orderData, error: orderError }] = await Promise.all([
+            const [{ data: topupData, error: topupError }] = await Promise.all([
                supabase
                   .from("topup_saldo")
-                  .select("id,jumlah,metode,keterangan,created_at")
+                  .select("id,jumlah,metode,tipe,keterangan,created_at")
                   .eq("nis_siswa", activeStudent.nis)
-                  .order("created_at", { ascending: false }),
-               supabase
-                  .from("transaksi")
-                  .select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at")
-                  .eq("nis_siswa", activeStudent.nis)
-                  .in("metode_pembayaran", ["Pelunasan", "Saldo"])
-                  .order("created_at", { ascending: false }),
-               supabase
-                  .from("order_siswa")
-                  .select("id,total_harga,metode_pembayaran,status_pembayaran,status_order,created_at")
-                  .eq("nis_siswa", activeStudent.nis)
-                  .eq("metode_pembayaran", "Saldo")
                   .order("created_at", { ascending: false }),
             ]);
 
-            if (topupError || paymentError || orderError) {
+            if (topupError) {
                setHistoryItems([]);
                return;
             }
 
-            if (topupError || paymentError) {
-               setHistoryItems([]);
-               return;
-            }
-
-            const topupHistory = (topupData ?? []).map((item) => ({
-               id: `topup_${item.id}`,
-               created_at: item.created_at,
-               amount: Number(item.jumlah),
-               type: "Saldo Masuk",
-               method: item.metode,
-               description: item.keterangan || "",
-            }));
-
-            const outgoingHistory = (paymentData ?? []).map((item) => ({
-               id: `trx_${item.id}`,
-               created_at: item.created_at,
-               amount: Number(item.total_bayar),
-               type: "Saldo Keluar",
-               method: item.metode_pembayaran === "Saldo" ? "Pembayaran Saldo" : "Pembayaran Hutang",
-               description: item.status_pembayaran || "",
-            }));
-
-            const refundHistory = (orderData ?? [])
-               .filter((item) => item.status_order === "Ditolak" && item.status_pembayaran === "Lunas")
-               .map((item) => ({
-                  id: `refund_${item.id}`,
+            const topupHistory = (topupData ?? []).map((item) => {
+               const isIncoming = ["Top-up", "Refund"].includes(item.tipe);
+               return {
+                  id: `topup_${item.id}`,
                   created_at: item.created_at,
-                  amount: Number(item.total_harga),
-                  type: "Saldo Masuk",
-                  method: "Refund Order Ditolak",
-                  description: "Saldo dikembalikan karena order ditolak",
-               }));
+                  amount: Number(item.jumlah),
+                  type: isIncoming ? "Saldo Masuk" : "Saldo Keluar",
+                  method: item.metode,
+                  tipe: item.tipe,
+                  description: item.keterangan || "",
+               };
+            });
 
-            setHistoryItems([
-               ...topupHistory,
-               ...outgoingHistory,
-               ...refundHistory,
-            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+            setHistoryItems(topupHistory.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
          } catch (error) {
             console.error(error);
             setErrorMessage("Gagal memuat data saldo.");

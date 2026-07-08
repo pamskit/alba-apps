@@ -216,6 +216,24 @@
    color: #856404;
 }
 
+.source-badge {
+   display: inline-block;
+   padding: 0.25rem 0.75rem;
+   border-radius: 4px;
+   font-size: 0.8rem;
+   font-weight: 500;
+}
+
+.source-badge--order {
+   background-color: #cfe2ff;
+   color: #084298;
+}
+
+.source-badge--kasir {
+   background-color: #e2e3e5;
+   color: #383d41;
+}
+
 .page-message {
    padding: 0.9rem 1rem;
    margin-bottom: 1rem;
