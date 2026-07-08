@@ -14,10 +14,6 @@ export default function DashboardGuruPage() {
    const [orders, setOrders] = useState([]);
    const [loading, setLoading] = useState(true);
 
-   useEffect(() => {
-      fetchData();
-   }, []);
-
    async function fetchData() {
       setLoading(true);
       try {
@@ -61,6 +57,14 @@ export default function DashboardGuruPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      const load = async () => {
+         await fetchData();
+      };
+
+      void load();
+   }, []);
 
    const debtText = useMemo(() => {
       if (!teacher) return "";

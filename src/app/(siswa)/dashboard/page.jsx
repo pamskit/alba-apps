@@ -13,10 +13,6 @@ export default function DashboardSiswaPage() {
    const [transactions, setTransactions] = useState([]);
    const [loading, setLoading] = useState(true);
 
-   useEffect(() => {
-      fetchData();
-   }, []);
-
    async function fetchData() {
       setLoading(true);
       try {
@@ -60,6 +56,14 @@ export default function DashboardSiswaPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      const load = async () => {
+         await fetchData();
+      };
+
+      void load();
+   }, []);
 
    const debtText = useMemo(() => {
       if (!student) return "";

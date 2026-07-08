@@ -61,11 +61,17 @@ export default function GuruSaldoPage() {
 
             setTeacher(activeTeacher);
 
-            const [{ data: topupData, error: topupError }, { data: paymentData, error: paymentError }] = await Promise.all([
+            const [{ data: topupData, error: topupError }, { data: transaksiData, error: transaksiError }, { data: orderData, error: orderError }] = await Promise.all([
                supabase
                   .from("topup_saldo_guru")
                   .select("id,jumlah,metode,keterangan,created_at")
                   .eq("nip_guru", activeTeacher.nip)
+                  .order("created_at", { ascending: false }),
+               supabase
+                  .from("transaksi")
+                  .select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at")
+                  .eq("nip_guru", activeTeacher.nip)
+                  .in("metode_pembayaran", ["Pelunasan", "Tunai"])
                   .order("created_at", { ascending: false }),
                supabase
                   .from("order_guru")
@@ -75,7 +81,7 @@ export default function GuruSaldoPage() {
                   .order("created_at", { ascending: false }),
             ]);
 
-            if (topupError || paymentError) {
+            if (topupError || transaksiError || orderError) {
                setHistoryItems([]);
                return;
             }
@@ -95,13 +101,26 @@ export default function GuruSaldoPage() {
                });
             }
 
-            if (paymentData) {
-               paymentData.forEach((item) => {
+            if (transaksiData) {
+               transaksiData.forEach((item) => {
+                  combinedHistory.push({
+                     id: `trx_${item.id}`,
+                     type: "Saldo Keluar",
+                     amount: Number(item.total_bayar ?? 0),
+                     method: item.metode_pembayaran === "Pelunasan" ? "Pembayaran Hutang" : "Pembayaran Saldo",
+                     description: item.status_pembayaran || item.metode_pembayaran || "",
+                     date: item.created_at,
+                  });
+               });
+            }
+
+            if (orderData) {
+               orderData.forEach((item) => {
                   const isRefunded = item.status_order === "Ditolak" && item.status_pembayaran === "Lunas";
                   combinedHistory.push({
                      id: `order_${item.id}`,
                      type: isRefunded ? "Saldo Masuk" : "Saldo Keluar",
-                     amount: isRefunded ? item.total_harga : item.total_harga,
+                     amount: Number(item.total_harga ?? 0),
                      method: isRefunded ? "Refund Order Ditolak" : "Pembayaran Saldo",
                      description: isRefunded ? "Saldo dikembalikan karena order ditolak" : undefined,
                      date: item.created_at,

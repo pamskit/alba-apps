@@ -71,7 +71,7 @@ export default function SiswaSaldoPage() {
                   .from("transaksi")
                   .select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at")
                   .eq("nis_siswa", activeStudent.nis)
-                  .in("metode_pembayaran", ["Pelunasan", "Saldo"])
+                  .in("metode_pembayaran", ["Pelunasan", "Tunai"])
                   .order("created_at", { ascending: false }),
                supabase
                   .from("order_siswa")
@@ -105,7 +105,10 @@ export default function SiswaSaldoPage() {
                created_at: item.created_at,
                amount: Number(item.total_bayar),
                type: "Saldo Keluar",
-               method: item.metode_pembayaran === "Saldo" ? "Pembayaran Saldo" : "Pembayaran Hutang",
+               method:
+                  item.metode_pembayaran === "Pelunasan"
+                     ? "Pembayaran Hutang"
+                     : "Pembayaran Saldo",
                description: item.status_pembayaran || "",
             }));
 

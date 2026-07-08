@@ -46,10 +46,12 @@ export default function SiswaHutangPage() {
             setStudent(siswaData);
             setPaymentAmount(siswaData.total_hutang ?? "");
 
+            // only fetch transaksi related to hutang (ajukan hutang or pelunasan)
             const { data: historyData, error: historyError } = await supabase
                .from("transaksi")
                .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
                .eq("nis_siswa", nisSession)
+               .in("metode_pembayaran", ["Hutang", "Pelunasan"])
                .order("created_at", { ascending: false });
 
             if (historyError) throw historyError;

@@ -8,7 +8,7 @@ import Loading from "@/components/Loading";
 
 export default function GuruLayout({ children }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
 
   function handleLogout() {
     clearAuthSession();
@@ -16,25 +16,25 @@ export default function GuruLayout({ children }) {
   }
 
   useEffect(() => {
-    const session = getAuthSession();
+    const authSession = getAuthSession();
+    setSession(authSession);
 
-    if (!session) {
+    if (!authSession) {
       clearAuthSession();
       router.replace("/");
       return;
     }
 
-    if (session.role === "guru") {
-      setLoading(false);
+    if (authSession.role === "guru") {
       return;
     }
 
-    if (session.role === "admin") {
+    if (authSession.role === "admin") {
       router.replace("/admin");
       return;
     }
 
-    if (session.role === "siswa") {
+    if (authSession.role === "siswa") {
       router.replace("/dashboard");
       return;
     }
@@ -43,7 +43,7 @@ export default function GuruLayout({ children }) {
     router.replace("/");
   }, [router]);
 
-  if (loading) {
+  if (!session || session.role !== "guru") {
     return <Loading message="Memeriksa otentikasi guru..." size="large" />;
   }
 

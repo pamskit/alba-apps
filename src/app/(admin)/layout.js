@@ -8,7 +8,7 @@ import Loading from "@/components/Loading";
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
 
   function handleLogout() {
     clearAuthSession();
@@ -16,20 +16,20 @@ export default function AdminLayout({ children }) {
   }
 
   useEffect(() => {
-    const session = getAuthSession();
+    const authSession = getAuthSession();
+    setSession(authSession);
 
-    if (!session) {
+    if (!authSession) {
       clearAuthSession();
       router.replace("/");
       return;
     }
 
-    if (session.role === "admin") {
-      setLoading(false);
+    if (authSession.role === "admin") {
       return;
     }
 
-    if (session.role === "siswa") {
+    if (authSession.role === "siswa") {
       router.replace("/dashboard");
       return;
     }
@@ -38,7 +38,7 @@ export default function AdminLayout({ children }) {
     router.replace("/");
   }, [router]);
 
-  if (loading) {
+  if (!session || session.role !== "admin") {
     return <Loading message="Memeriksa otentikasi admin..." size="large" />;
   }
 

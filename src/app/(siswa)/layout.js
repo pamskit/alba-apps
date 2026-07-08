@@ -8,7 +8,7 @@ import Loading from "@/components/Loading";
 
 export default function SiswaLayout({ children }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
 
   function handleLogout() {
     clearAuthSession();
@@ -16,20 +16,20 @@ export default function SiswaLayout({ children }) {
   }
 
   useEffect(() => {
-    const session = getAuthSession();
+    const authSession = getAuthSession();
+    setSession(authSession);
 
-    if (!session) {
+    if (!authSession) {
       clearAuthSession();
       router.replace("/");
       return;
     }
 
-    if (session.role === "siswa") {
-      setLoading(false);
+    if (authSession.role === "siswa") {
       return;
     }
 
-    if (session.role === "admin") {
+    if (authSession.role === "admin") {
       router.replace("/kasir");
       return;
     }
@@ -38,7 +38,7 @@ export default function SiswaLayout({ children }) {
     router.replace("/");
   }, [router]);
 
-  if (loading) {
+  if (!session || session.role !== "siswa") {
     return <Loading message="Memeriksa otentikasi siswa..." size="large" />;
   }
 

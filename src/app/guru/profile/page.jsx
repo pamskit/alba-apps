@@ -19,10 +19,6 @@ export default function GuruProfilePage() {
    });
    const [message, setMessage] = useState({ type: "", text: "" });
 
-   useEffect(() => {
-      fetchTeacher();
-   }, []);
-
    async function fetchTeacher() {
       setLoading(true);
       try {
@@ -49,6 +45,14 @@ export default function GuruProfilePage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      const load = async () => {
+         await fetchTeacher();
+      };
+
+      void load();
+   }, []);
 
    function handleInputChange(event) {
       const { name, value } = event.target;

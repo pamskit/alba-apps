@@ -47,8 +47,8 @@ export default function GuruHutangPage() {
             setPaymentAmount(guruData.total_hutang ?? "");
 
             const { data: historyData, error: historyError } = await supabase
-               .from("order_guru")
-               .select("id,created_at,total_harga,metode_pembayaran,status_pembayaran")
+               .from("transaksi")
+               .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
                .eq("nip_guru", nipSession)
                .order("created_at", { ascending: false });
 
@@ -64,6 +64,14 @@ export default function GuruHutangPage() {
 
       fetchData();
    }, []);
+
+   function getHutangTransactionLabel(item) {
+      if (item.metode_pembayaran === "Hutang") return "Ajukan Hutang";
+      if (item.metode_pembayaran === "Pelunasan") return "Bayar Hutang";
+      if (item.metode_pembayaran === "Tunai") return "Pembayaran Tunai";
+      if (item.metode_pembayaran === "QRIS") return "Pembayaran QRIS";
+      return item.metode_pembayaran ?? "-";
+   }
 
    async function handlePayHutang() {
       if (!teacher) return;
@@ -93,8 +101,30 @@ export default function GuruHutangPage() {
 
          if (updateError) throw updateError;
 
+         const trxId = `trx_${Date.now()}`;
+         const { error: insertError } = await supabase.from("transaksi").insert({
+            id: trxId,
+            nis_siswa: null,
+            nip_guru: teacher.nip,
+            metode_pembayaran: "Pelunasan",
+            status_pembayaran: newHutang === 0 ? "Lunas" : "Belum Lunas",
+            total_bayar: amount,
+         });
+
+         if (insertError) throw insertError;
+
          setTeacher({ ...teacher, saldo: newSaldo, total_hutang: newHutang });
          setPaymentAmount(newHutang);
+         setHutangHistory((prev) => [
+            {
+               id: trxId,
+               created_at: new Date().toISOString(),
+               total_bayar: amount,
+               metode_pembayaran: "Pelunasan",
+               status_pembayaran: newHutang === 0 ? "Lunas" : "Belum Lunas",
+            },
+            ...prev,
+         ]);
 
          alert("Pembayaran hutang berhasil.");
       } catch (error) {
@@ -162,38 +192,30 @@ export default function GuruHutangPage() {
                )}
 
                <div className="hutang-history">
-                  <div className="hutang-history__title">Riwayat Pesanan dengan Hutang</div>
+                  <div className="hutang-history__title">Riwayat Hutang</div>
                   {hutangHistory.length === 0 ? (
                      <div className="page-message">Tidak ada riwayat hutang.</div>
                   ) : (
                      <table className="history-table">
                         <thead>
                            <tr>
-                              <th>ID Pesanan</th>
-                              <th>Jumlah</th>
-                              <th>Metode</th>
-                              <th>Status Order</th>
-                              <th>Status Bayar</th>
                               <th>Tanggal</th>
+                              <th>Jumlah</th>
+                              <th>Tipe</th>
+                              <th>Status</th>
                            </tr>
                         </thead>
                         <tbody>
                            {hutangHistory.map((item) => (
                               <tr key={item.id}>
-                                 <td>{item.id.substring(0, 12)}</td>
-                                 <td>Rp {Number(item.total_harga).toLocaleString()}</td>
-                                 <td>{item.metode_pembayaran}</td>
-                                 <td>
-                                    <span className={`status-badge ${item.status_order === "Dikonfirmasi" ? "status-badge--success" : ""}`}>
-                                       {item.status_order}
-                                    </span>
-                                 </td>
+                                 <td>{new Date(item.created_at).toLocaleString("id-ID")}</td>
+                                 <td>Rp {Number(item.total_bayar).toLocaleString()}</td>
+                                 <td>{getHutangTransactionLabel(item)}</td>
                                  <td>
                                     <span className={`status-badge ${item.status_pembayaran === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
                                        {item.status_pembayaran}
                                     </span>
                                  </td>
-                                 <td>{new Date(item.created_at).toLocaleDateString("id-ID")}</td>
                               </tr>
                            ))}
                         </tbody>

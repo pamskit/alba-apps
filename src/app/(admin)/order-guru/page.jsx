@@ -96,6 +96,55 @@ export default function OrderGuruPage() {
       return method === "Saldo" ? "order-card__chip order-card__chip--saldo" : "order-card__chip order-card__chip--hutang";
    }
 
+   function getTransaksiMethod(orderMethod) {
+      if (orderMethod === "Saldo") return "Tunai";
+      if (orderMethod === "Hutang") return "Hutang";
+      return "Tunai";
+   }
+
+   async function createTransaksiFromOrder(order, statusPembayaran) {
+      const trxId = `trx_${Date.now()}`;
+      const metodePembayaran = getTransaksiMethod(order.metode_pembayaran);
+      const { data: transaksiData, error: tErr } = await supabase
+         .from("transaksi")
+         .insert({
+            id: trxId,
+            nis_siswa: null,
+            nip_guru: order.guru?.nip ?? null,
+            total_bayar: Number(order.total_harga ?? 0),
+            metode_pembayaran: metodePembayaran,
+            status_pembayaran: statusPembayaran,
+         })
+         .select()
+         .maybeSingle();
+      if (tErr) throw tErr;
+      return (transaksiData && transaksiData.id) || trxId;
+   }
+
+   async function createDetailsFromOrder(orderId, transaksiId) {
+      const { data: details, error: detailsErr } = await supabase
+         .from("detail_order_guru")
+         .select("produk_id,jumlah,harga_satuan")
+         .eq("order_id", orderId);
+      if (detailsErr) throw detailsErr;
+
+      const detailPayload = (details ?? []).map((d) => ({ transaksi_id: transaksiId, produk_id: d.produk_id, jumlah: d.jumlah }));
+      if (detailPayload.length > 0) {
+         const { error: dErr } = await supabase.from("detail_transaksi").insert(detailPayload);
+         if (dErr) throw dErr;
+      }
+      return detailPayload;
+   }
+
+   async function reduceProductStock(detailPayload) {
+      for (const d of detailPayload) {
+         const { data: prodData } = await supabase.from("produk").select("stok").eq("id", d.produk_id).maybeSingle();
+         const currentStok = Number(prodData?.stok ?? 0);
+         const newStok = Math.max(0, currentStok - Number(d.jumlah ?? 0));
+         await supabase.from("produk").update({ stok: newStok }).eq("id", d.produk_id);
+      }
+   }
+
    function handleSelectOrder(orderId) {
       setSelectedOrderId(orderId);
       setOrderItems([]);
@@ -139,27 +188,44 @@ export default function OrderGuruPage() {
 
       if (order.metode_pembayaran === "Saldo") {
          setActionLoading(true);
+         setErrorMessage("");
          try {
-            const { error: orderError } = await supabase.from("order_guru").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id);
+            const transaksiId = await createTransaksiFromOrder(order, "Lunas");
+            const detailPayload = await createDetailsFromOrder(order.id, transaksiId);
+            if (detailPayload.length > 0) {
+               await reduceProductStock(detailPayload);
+            }
 
+            const { error: orderError } = await supabase
+               .from("order_guru")
+               .update({ ...updates, status_pembayaran: "Lunas" })
+               .eq("id", order.id);
             if (orderError) throw orderError;
 
             setMessage("Order berhasil dikonfirmasi.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
-            console.error(error);
-            setErrorMessage("Gagal mengonfirmasi order dengan pembayaran saldo.");
+            console.error("handleConfirm saldo error:", error);
+            setErrorMessage("Order dikonfirmasi tapi gagal mencatat atau memproses transaksi.");
          } finally {
             setActionLoading(false);
          }
+
          return;
       }
 
       if (order.metode_pembayaran === "Hutang") {
          const newHutang = currentHutang + totalHarga;
          setActionLoading(true);
+         setErrorMessage("");
          try {
+            const transaksiId = await createTransaksiFromOrder(order, "Belum Lunas");
+            const detailPayload = await createDetailsFromOrder(order.id, transaksiId);
+            if (detailPayload.length > 0) {
+               await reduceProductStock(detailPayload);
+            }
+
             const [{ error: updateHutangError }, { error: orderError }] = await Promise.all([
                supabase.from("guru").update({ total_hutang: newHutang }).eq("nip", order.guru.nip),
                supabase.from("order_guru").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id),
@@ -171,11 +237,12 @@ export default function OrderGuruPage() {
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
-            console.error(error);
-            setErrorMessage("Gagal mengonfirmasi order hutang.");
+            console.error("handleConfirm hutang error:", error);
+            setErrorMessage("Order hutang dikonfirmasi tapi gagal mencatat atau memproses transaksi.");
          } finally {
             setActionLoading(false);
          }
+
          return;
       }
 

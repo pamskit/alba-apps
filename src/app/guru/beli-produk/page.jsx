@@ -135,6 +135,7 @@ export default function BeliProdukGuruPage() {
             metode_pembayaran: paymentMethod,
             status_order: "Menunggu",
             status_pembayaran: paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas",
+            keterangan: paymentMethod === "Saldo" ? "Menunggu konfirmasi admin untuk pembayaran saldo" : "Menunggu konfirmasi admin untuk hutang",
          });
 
          if (orderError) throw orderError;

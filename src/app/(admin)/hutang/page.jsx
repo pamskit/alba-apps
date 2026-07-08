@@ -94,6 +94,8 @@ export default function BukuHutangPage() {
             metode_pembayaran: paymentMethod,
             status_pembayaran: amount >= Number(selectedEntry.total_hutang) ? "Lunas" : "Belum Lunas",
             total_bayar: amount,
+            nis_siswa: null,
+            nip_guru: null,
          };
 
          if (selectedEntry.type === "siswa") {

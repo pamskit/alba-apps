@@ -46,6 +46,7 @@ CREATE TABLE transaksi (
     id TEXT PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     nis_siswa INT REFERENCES siswa(nis) ON DELETE SET NULL,
+    nip_guru INT REFERENCES guru(nip) ON DELETE SET NULL,
     total_bayar INT NOT NULL CHECK (total_bayar >= 0),
     metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Tunai', 'QRIS', 'Hutang', 'Pelunasan')),
     status_pembayaran TEXT NOT NULL CHECK (status_pembayaran IN ('Lunas', 'Belum Lunas'))
@@ -127,6 +128,7 @@ CREATE TABLE topup_saldo_guru (
 TRUNCATE detail_order_guru, detail_order_siswa, detail_transaksi, transaksi, order_guru, order_siswa, topup_saldo_guru, topup_saldo, produk, guru, siswa RESTART IDENTITY CASCADE;
 
 INSERT INTO siswa (nis, nama_siswa, kelas, password, total_hutang, saldo) VALUES
+(1000, 'Yudha', '10A', 'password123', 10000, 20000),
 (1001, 'Andi Santoso', '10A', 'password123', 15000, 25000),
 (1002, 'Budi Pratama', '10A', 'password123', 0, 40000),
 (1003, 'Citra Maharani', '10B', 'password123', 20000, 12000),

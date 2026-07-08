@@ -19,10 +19,6 @@ export default function SettingsPage() {
    });
    const [message, setMessage] = useState({ type: "", text: "" });
 
-   useEffect(() => {
-      fetchStudent();
-   }, []);
-
    async function fetchStudent() {
       setLoading(true);
       try {
@@ -45,6 +41,14 @@ export default function SettingsPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      const load = async () => {
+         await fetchStudent();
+      };
+
+      void load();
+   }, []);
 
    function handleInputChange(event) {
       const { name, value } = event.target;
