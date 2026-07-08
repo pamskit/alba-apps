@@ -162,3 +162,56 @@
       align-items: stretch;
    }
 }
+
+.produk-import {
+   border: 1px solid #e0e0e0;
+   border-radius: 16px;
+   padding: 20px;
+   background: #fff;
+   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+   margin-bottom: 24px;
+}
+
+.produk-import__header {
+   display: flex;
+   gap: 8px;
+   align-items: baseline;
+   margin-bottom: 16px;
+}
+
+.produk-import__header h2 {
+   margin: 0;
+   font-size: 1.1rem;
+}
+
+.produk-import__controls {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 12px;
+   align-items: center;
+}
+
+.produk-import__button {
+   min-height: 44px;
+   padding: 0 18px;
+}
+
+.produk-import__success,
+.produk-import__error {
+   margin-top: 16px;
+   padding: 14px 16px;
+   border-radius: 14px;
+   font-size: 0.95rem;
+}
+
+.produk-import__success {
+   background: #ecfdf5;
+   color: #166534;
+   border: 1px solid #d1fae5;
+}
+
+.produk-import__error {
+   background: #fef2f2;
+   color: #991b1b;
+   border: 1px solid #fecaca;
+}

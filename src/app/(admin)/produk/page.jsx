@@ -17,6 +17,10 @@ export default function ProdukPage() {
    const [newHarga, setNewHarga] = useState(0);
    const [newStok, setNewStok] = useState(0);
    const [searchQuery, setSearchQuery] = useState("");
+   const [csvFile, setCsvFile] = useState(null);
+   const [importLoading, setImportLoading] = useState(false);
+   const [importError, setImportError] = useState("");
+   const [importMessage, setImportMessage] = useState("");
 
    useEffect(() => {
       fetchProducts();
@@ -74,6 +78,81 @@ export default function ProdukPage() {
          alert("Gagal menambahkan produk");
       } finally {
          setLoading(false);
+      }
+   }
+
+   function downloadCsvTemplate() {
+      const header = ["nama_produk", "harga", "stok"];
+      const csv = [header.join(",")].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "template_produk.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+   }
+
+   async function handleImportCsv(e) {
+      e.preventDefault();
+      setImportMessage("");
+      setImportError("");
+      if (!csvFile) {
+         setImportError("Pilih file CSV terlebih dahulu.");
+         return;
+      }
+
+      setImportLoading(true);
+      try {
+         const text = await csvFile.text();
+         const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
+         if (lines.length < 2) {
+            throw new Error("File CSV tidak berisi data produk.");
+         }
+
+         const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+         const expected = ["nama_produk", "harga", "stok"];
+         if (headers.length !== expected.length || !expected.every((name, idx) => headers[idx] === name)) {
+            throw new Error("Header CSV harus: nama_produk,harga,stok");
+         }
+
+         const rows = lines.slice(1).map((line, index) => {
+            const cols = line.split(",").map((col) => col.trim());
+            if (cols.length !== expected.length) {
+               throw new Error(`Baris ${index + 2} tidak memiliki 3 kolom.`);
+            }
+            const [nama_produk, harga, stok] = cols;
+            if (!nama_produk) {
+               throw new Error(`Baris ${index + 2}: nama_produk wajib diisi.`);
+            }
+            const hargaNumber = Number(harga);
+            const stokNumber = Number(stok);
+            if (Number.isNaN(hargaNumber) || hargaNumber < 0) {
+               throw new Error(`Baris ${index + 2}: harga harus angka >= 0.`);
+            }
+            if (Number.isNaN(stokNumber) || stokNumber < 0) {
+               throw new Error(`Baris ${index + 2}: stok harus angka >= 0.`);
+            }
+            return {
+               nama_produk,
+               harga: hargaNumber,
+               stok: stokNumber,
+            };
+         });
+
+         const { error } = await supabase.from("produk").insert(rows);
+         if (error) throw error;
+
+         setImportMessage(`${rows.length} produk berhasil diimpor.`);
+         setCsvFile(null);
+         await fetchProducts();
+      } catch (err) {
+         console.error(err);
+         setImportError(err.message || "Gagal mengimpor CSV.");
+      } finally {
+         setImportLoading(false);
       }
    }
 
@@ -140,6 +219,34 @@ export default function ProdukPage() {
                   Tambah Produk
                </button>
             </form>
+         </section>
+
+         <section className="produk-page__panel produk-page__import-panel">
+            <div className="produk-import">
+               <div className="produk-import__header">
+                  <h2>Impor Produk CSV</h2>
+                  <p>Unduh template CSV lalu unggah file berisi daftar produk.</p>
+               </div>
+               <div className="produk-import__controls">
+                  <button className="btn btn--secondary produk-import__button" type="button" onClick={downloadCsvTemplate}>
+                     Unduh Template CSV
+                  </button>
+                  <input
+                     type="file"
+                     accept=".csv"
+                     onChange={(e) => {
+                        setCsvFile(e.target.files?.[0] ?? null);
+                        setImportError("");
+                        setImportMessage("");
+                     }}
+                  />
+                  <button className="btn btn--primary produk-import__button" type="button" onClick={handleImportCsv} disabled={importLoading || !csvFile}>
+                     {importLoading ? "Mengimpor..." : "Impor CSV"}
+                  </button>
+               </div>
+               {importMessage && <div className="produk-import__success">{importMessage}</div>}
+               {importError && <div className="produk-import__error">{importError}</div>}
+            </div>
          </section>
 
          <section className="produk-page__panel produk-page__table-panel">
