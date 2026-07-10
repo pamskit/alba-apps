@@ -7,10 +7,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+function getFirstConfiguredValue(keys) {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
 function normalizeAdminCredentials() {
-  const configuredUsername = process.env.ADMIN_USERNAME?.trim();
-  const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
-  const configuredPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
+  const configuredUsername = getFirstConfiguredValue([
+    "ADMIN_USERNAME",
+    "NEXT_PUBLIC_ADMIN_USERNAME",
+    "ADMIN_USER",
+    "ADMIN_USER_NAME",
+  ]);
+  const configuredPassword = getFirstConfiguredValue([
+    "ADMIN_PASSWORD",
+    "NEXT_PUBLIC_ADMIN_PASSWORD",
+    "ADMIN_PASS",
+    "ADMIN_PWD",
+  ]);
+  const configuredPasswordHash = getFirstConfiguredValue([
+    "ADMIN_PASSWORD_HASH",
+    "NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
+    "ADMIN_HASH",
+  ]);
 
   return {
     username: configuredUsername || "admin",
