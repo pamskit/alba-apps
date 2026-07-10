@@ -133,6 +133,7 @@ TRUNCATE detail_order_guru, detail_order_siswa, detail_transaksi, transaksi, ord
 
 INSERT INTO siswa (nis, nama_siswa, kelas, password, total_hutang, saldo) VALUES
 (10000, 'Fery Irwandi', '10A', 'siswa123', 0, 50000),
+(10100, 'Ariel Putri', '10A', 'siswa123', 15000, 45000),
 (10101, 'Bima Santoso', '11B', 'siswa123', 0, 68000),
 (10102, 'Citra Dewi', '12C', 'siswa123', 5000, 12000),
 (10103, 'Dedi Wirawan', '10B', 'siswa123', 30000, 25000),
