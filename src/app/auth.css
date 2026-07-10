@@ -25,6 +25,13 @@
    color: #4b5563;
 }
 
+.auth-help-text {
+   margin: -0.5rem 0 1rem;
+   font-size: 0.93rem;
+   color: #64748b;
+   line-height: 1.5;
+}
+
 .auth-form {
    display: grid;
    gap: 1rem;

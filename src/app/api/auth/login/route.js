@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { createSessionCookie } from "@/utils/session";
 
@@ -5,6 +6,29 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+function normalizeAdminCredentials() {
+  const configuredUsername = process.env.ADMIN_USERNAME?.trim();
+  const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+  const configuredPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
+
+  return {
+    username: configuredUsername || "admin",
+    password: configuredPassword || "",
+    passwordHash: configuredPasswordHash || "",
+  };
+}
+
+function verifyPassword(inputPassword, expectedPassword, expectedHash) {
+  if (!inputPassword) return false;
+
+  if (expectedHash) {
+    const hashedInput = createHash("sha256").update(inputPassword).digest("hex");
+    return hashedInput === expectedHash;
+  }
+
+  return inputPassword === expectedPassword;
+}
 
 export async function POST(req) {
   try {
@@ -16,12 +40,18 @@ export async function POST(req) {
 
     const normalizedIdentifier = String(identifier).trim();
 
-    if (normalizedIdentifier.toLowerCase() === "admin") {
-      if (password !== "password123") {
+    const { username: adminUsername, password: adminPassword, passwordHash: adminPasswordHash } = normalizeAdminCredentials();
+
+    if (normalizedIdentifier.toLowerCase() === adminUsername.toLowerCase()) {
+      if (!adminPassword && !adminPasswordHash) {
+        return Response.json({ error: "Admin belum dikonfigurasi. Setel ADMIN_USERNAME dan ADMIN_PASSWORD atau ADMIN_PASSWORD_HASH di environment server." }, { status: 503 });
+      }
+
+      if (!verifyPassword(password, adminPassword, adminPasswordHash)) {
         return Response.json({ error: "Username atau password admin salah." }, { status: 401 });
       }
 
-      const session = { role: "admin", username: "admin" };
+      const session = { role: "admin", username: adminUsername };
       return new Response(JSON.stringify({ success: true, session }), {
         status: 200,
         headers: {

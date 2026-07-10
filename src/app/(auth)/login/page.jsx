@@ -80,6 +80,7 @@ function UnifiedLoginContent() {
          <section className="auth-card">
             <h1>Masuk ke Koperasi</h1>
             <p>Masukkan username admin, NIS siswa, atau NIP guru untuk masuk ke sistem.</p>
+            <p className="auth-help-text">Untuk admin, password dapat diatur dari environment server agar lebih aman dan tidak tertulis di kode.</p>
 
             <form onSubmit={handleSubmit} className="auth-form">
                <label>
