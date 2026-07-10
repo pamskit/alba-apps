@@ -3,75 +3,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
-import {
-   Area,
-   AreaChart,
-   Bar,
-   BarChart,
-   CartesianGrid,
-   Legend,
-   Line,
-   LineChart,
-   ResponsiveContainer,
-   Tooltip,
-   XAxis,
-   YAxis,
-} from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import "./dashboard.css";
 
 const supabase = createClient();
 
 export default function AdminDashboardPage() {
-   const [productCount, setProductCount] = useState(0);
-   const [studentCount, setStudentCount] = useState(0);
-   const [txnCountToday, setTxnCountToday] = useState(0);
-   const [revenueToday, setRevenueToday] = useState(0);
-   const [topupCount, setTopupCount] = useState(0);
-   const [orderCount, setOrderCount] = useState(0);
-   const [orderRevenue, setOrderRevenue] = useState(0);
-   const [ordersData, setOrdersData] = useState([]);
-   const [latestTransactions, setLatestTransactions] = useState([]);
-   const [chartData, setChartData] = useState([]);
+   const [products, setProducts] = useState([]);
+   const [transactions, setTransactions] = useState([]);
+   const [ordersSiswa, setOrdersSiswa] = useState([]);
+   const [ordersGuru, setOrdersGuru] = useState([]);
+   const [detailTransactions, setDetailTransactions] = useState([]);
+   const [detailOrdersSiswa, setDetailOrdersSiswa] = useState([]);
+   const [detailOrdersGuru, setDetailOrdersGuru] = useState([]);
    const [loading, setLoading] = useState(false);
 
    useEffect(() => {
       const loadMetrics = async () => {
          setLoading(true);
          try {
-            const [{ data: produk }, { data: siswa }, { data: txns }, { data: topups }, { data: orders }] = await Promise.all([
-               supabase.from("produk").select("id"),
-               supabase.from("siswa").select("nis"),
-               supabase.from("transaksi").select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at").order("created_at", { ascending: false }).limit(8),
-               supabase.from("topup_saldo").select("id"),
-               supabase.from("order_siswa").select("id,total_harga,metode_pembayaran,created_at"),
+            const [{ data: produkData }, { data: transaksiData }, { data: detailTransaksiData }, { data: orderSiswaData }, { data: detailOrderSiswaData }, { data: orderGuruData }, { data: detailOrderGuruData }] = await Promise.all([
+               supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
+               supabase.from("transaksi").select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at,nis_siswa,nip_guru").order("created_at", { ascending: false }).limit(12),
+               supabase.from("detail_transaksi").select("transaksi_id,produk_id,jumlah"),
+               supabase.from("order_siswa").select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nis_siswa").order("created_at", { ascending: false }),
+               supabase.from("detail_order_siswa").select("order_id,produk_id,jumlah,harga_satuan"),
+               supabase.from("order_guru").select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nip_guru").order("created_at", { ascending: false }),
+               supabase.from("detail_order_guru").select("order_id,produk_id,jumlah,harga_satuan"),
             ]);
 
-            setProductCount(produk?.length ?? 0);
-            setStudentCount(siswa?.length ?? 0);
-            setTxnCountToday((txns ?? []).filter((trx) => new Date(trx.created_at).toDateString() === new Date().toDateString()).length);
-            setRevenueToday((txns ?? []).reduce((s, t) => s + Number(t.total_bayar || 0), 0));
-            setTopupCount(topups?.length ?? 0);
-            setOrderCount(orders?.length ?? 0);
-            setOrderRevenue((orders ?? []).reduce((s, order) => s + Number(order.total_harga || 0), 0));
-            setOrdersData(orders ?? []);
-            setLatestTransactions(txns ?? []);
-
-            const grouped = (orders ?? []).reduce((acc, order) => {
-               const date = new Date(order.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-               const item = acc.find((row) => row.name === date);
-               if (item) {
-                  item.orders += 1;
-                  item.revenue += Number(order.total_harga || 0);
-               } else {
-                  acc.push({ name: date, orders: 1, revenue: Number(order.total_harga || 0) });
-               }
-               return acc;
-            }, []);
-
-            const lastSeven = [...grouped]
-               .sort((a, b) => new Date(a.name) - new Date(b.name))
-               .slice(-7);
-            setChartData(lastSeven.length ? lastSeven : [{ name: "-", orders: 0, revenue: 0 }]);
+            setProducts(produkData ?? []);
+            setTransactions(transaksiData ?? []);
+            setDetailTransactions(detailTransaksiData ?? []);
+            setOrdersSiswa(orderSiswaData ?? []);
+            setDetailOrdersSiswa(detailOrderSiswaData ?? []);
+            setOrdersGuru(orderGuruData ?? []);
+            setDetailOrdersGuru(detailOrderGuruData ?? []);
          } catch (err) {
             console.error(err);
          } finally {
@@ -82,101 +49,159 @@ export default function AdminDashboardPage() {
       void loadMetrics();
    }, []);
 
-   const revenueLabel = useMemo(() => `Rp ${Number(revenueToday).toLocaleString()}`, [revenueToday]);
-   const orderRevenueLabel = useMemo(() => `Rp ${Number(orderRevenue).toLocaleString()}`, [orderRevenue]);
+   const validTransactions = useMemo(() => {
+      return (transactions ?? []).filter((item) => item.status_pembayaran === "Lunas");
+   }, [transactions]);
 
-   const monthNames = useMemo(() => {
-      const now = new Date();
-      return {
-         current: new Intl.DateTimeFormat("id-ID", { month: "long" }).format(now),
-         previous: new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
-      };
-   }, []);
+   const confirmedOrders = useMemo(() => {
+      return [...(ordersSiswa ?? []), ...(ordersGuru ?? [])]
+         .filter((order) => order.status_order === "Dikonfirmasi")
+         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+   }, [ordersSiswa, ordersGuru]);
 
-   const monthComparison = useMemo(() => {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-      const lastMonth = lastMonthDate.getMonth();
-      const lastMonthYear = lastMonthDate.getFullYear();
+   const validDetailTransactions = useMemo(() => {
+      const validIds = new Set((validTransactions ?? []).map((item) => item.id));
+      return (detailTransactions ?? []).filter((item) => validIds.has(item.transaksi_id));
+   }, [validTransactions, detailTransactions]);
 
-      let currentCount = 0;
-      let lastCount = 0;
-      let currentRevenue = 0;
-      let lastRevenue = 0;
+   const salesTimeline = useMemo(() => {
+      const entries = [
+         ...validTransactions.map((item) => ({
+            id: item.id,
+            source: "transaksi",
+            created_at: item.created_at,
+            amount: Number(item.total_bayar || 0),
+            status: item.status_pembayaran,
+            method: item.metode_pembayaran,
+            label: "Transaksi",
+         })),
+         ...confirmedOrders.map((item) => ({
+            id: item.id,
+            source: item.nis_siswa ? "order_siswa" : "order_guru",
+            created_at: item.created_at,
+            amount: Number(item.total_harga || 0),
+            status: item.status_order,
+            method: item.metode_pembayaran,
+            label: item.nis_siswa ? "Order Siswa" : "Order Guru",
+         })),
+      ];
 
-      (ordersData ?? []).forEach((order) => {
-         const date = new Date(order.created_at);
-         const month = date.getMonth();
-         const year = date.getFullYear();
-         const amount = Number(order.total_harga || 0);
+      return entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+   }, [validTransactions, confirmedOrders]);
 
-         if (month === currentMonth && year === currentYear) {
-            currentCount += 1;
-            currentRevenue += amount;
-         } else if (month === lastMonth && year === lastMonthYear) {
-            lastCount += 1;
-            lastRevenue += amount;
+   const salesChartData = useMemo(() => {
+      const lastSevenDays = Array.from({ length: 7 }, (_, index) => {
+         const date = new Date();
+         date.setDate(date.getDate() - (6 - index));
+         date.setHours(0, 0, 0, 0);
+         return {
+            label: date.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+            key: date.toISOString().slice(0, 10),
+            revenue: 0,
+            count: 0,
+         };
+      });
+
+      salesTimeline.forEach((entry) => {
+         const key = new Date(entry.created_at).toISOString().slice(0, 10);
+         const row = lastSevenDays.find((item) => item.key === key);
+         if (row) {
+            row.revenue += Number(entry.amount || 0);
+            row.count += 1;
          }
       });
 
-      const countDelta = lastCount === 0 ? (currentCount === 0 ? 0 : 100) : ((currentCount - lastCount) / lastCount) * 100;
-      const revenueDelta = lastRevenue === 0 ? (currentRevenue === 0 ? 0 : 100) : ((currentRevenue - lastRevenue) / lastRevenue) * 100;
+      return lastSevenDays;
+   }, [salesTimeline]);
 
-      return {
-         currentCount,
-         lastCount,
-         currentRevenue,
-         lastRevenue,
-         countDelta,
-         revenueDelta,
-      };
-   }, [ordersData]);
+   const totalItemsSold = useMemo(() => {
+      const fromTransactions = validDetailTransactions.reduce((sum, item) => sum + Number(item.jumlah || 0), 0);
+      const fromOrders = confirmedOrders.reduce((sum, order) => {
+         const details = [...(detailOrdersSiswa ?? []), ...(detailOrdersGuru ?? [])].filter((item) => item.order_id === order.id);
+         return sum + details.reduce((subSum, item) => subSum + Number(item.jumlah || 0), 0);
+      }, 0);
+      return fromTransactions + fromOrders;
+   }, [validDetailTransactions, confirmedOrders, detailOrdersSiswa, detailOrdersGuru]);
 
-   const comparisonChartData = useMemo(() => {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-      const lastMonth = lastMonthDate.getMonth();
-      const lastMonthYear = lastMonthDate.getFullYear();
+   const totalModal = useMemo(() => {
+      const productMap = new Map((products ?? []).map((product) => [product.id, Number(product.harga_beli ?? product.harga ?? 0)]));
+      let total = 0;
 
-      const dayMap = new Map();
-      const updateDay = (date, amount, key) => {
-         const day = date.getDate();
-         const label = day.toString();
-         const row = dayMap.get(label) ?? { day: label, revenueThisMonth: 0, revenueLastMonth: 0 };
-         row[key] += amount;
-         dayMap.set(label, row);
-      };
-
-      (ordersData ?? []).forEach((order) => {
-         const date = new Date(order.created_at);
-         const month = date.getMonth();
-         const year = date.getFullYear();
-         const amount = Number(order.total_harga || 0);
-
-         if (month === currentMonth && year === currentYear) {
-            updateDay(date, amount, "revenueThisMonth");
-         }
-         if (month === lastMonth && year === lastMonthYear) {
-            updateDay(date, amount, "revenueLastMonth");
-         }
+      validDetailTransactions.forEach((item) => {
+         total += (productMap.get(item.produk_id) ?? 0) * Number(item.jumlah || 0);
       });
 
-      return [...dayMap.values()].sort((a, b) => Number(a.day) - Number(b.day));
-   }, [ordersData]);
+      confirmedOrders.forEach((order) => {
+         const details = [...(detailOrdersSiswa ?? []), ...(detailOrdersGuru ?? [])].filter((item) => item.order_id === order.id);
+         details.forEach((item) => {
+            total += (productMap.get(item.produk_id) ?? 0) * Number(item.jumlah || 0);
+         });
+      });
 
-   const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
-   const formatDelta = (value) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+      return total;
+   }, [products, validDetailTransactions, confirmedOrders, detailOrdersSiswa, detailOrdersGuru]);
+
+   const omzet = useMemo(() => salesTimeline.reduce((sum, item) => sum + Number(item.amount || 0), 0), [salesTimeline]);
+   const labaKotor = useMemo(() => Math.max(0, omzet - totalModal), [omzet, totalModal]);
+   const estimasiLabaBersih = useMemo(() => Math.max(0, labaKotor * 0.9), [labaKotor]);
+   const avgOrderValue = useMemo(() => (salesTimeline.length ? omzet / salesTimeline.length : 0), [salesTimeline, omzet]);
+
+   const topProducts = useMemo(() => {
+      const map = new Map();
+      const addItem = (item, price) => {
+         const product = (products ?? []).find((entry) => entry.id === item.produk_id);
+         if (!product) return;
+         const existing = map.get(product.id) ?? { id: product.id, name: product.nama_produk, stock: Number(product.stok || 0), buyPrice: Number(product.harga_beli ?? product.harga ?? 0), sellPrice: Number(product.harga_jual ?? product.harga ?? 0), qty: 0, revenue: 0 };
+         existing.qty += Number(item.jumlah || 0);
+         existing.revenue += Number(price || 0) * Number(item.jumlah || 0);
+         map.set(product.id, existing);
+      };
+
+      validDetailTransactions.forEach((item) => addItem(item, Number((products ?? []).find((product) => product.id === item.produk_id)?.harga_jual ?? 0)));
+      confirmedOrders.forEach((order) => {
+         [...(detailOrdersSiswa ?? []), ...(detailOrdersGuru ?? [])]
+            .filter((item) => item.order_id === order.id)
+            .forEach((item) => addItem(item, Number(item.harga_satuan || 0)));
+      });
+
+      return [...map.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+   }, [products, validDetailTransactions, confirmedOrders, detailOrdersSiswa, detailOrdersGuru]);
+
+   const lowStockProducts = useMemo(() => {
+      return (products ?? []).filter((product) => Number(product.stok || 0) <= 5).sort((a, b) => Number(a.stok || 0) - Number(b.stok || 0));
+   }, [products]);
+
+   const latestActivity = useMemo(() => {
+      const items = [
+         ...validTransactions.map((item) => ({
+            id: item.id,
+            type: "Transaksi",
+            label: `Transaksi • ${item.metode_pembayaran}`,
+            created_at: item.created_at,
+            amount: Number(item.total_bayar || 0),
+            status: item.status_pembayaran,
+         })),
+         ...confirmedOrders.map((item) => ({
+            id: item.id,
+            type: item.nis_siswa ? "Order Siswa" : "Order Guru",
+            label: `${item.nis_siswa ? "Order Siswa" : "Order Guru"} • ${item.metode_pembayaran}`,
+            created_at: item.created_at,
+            amount: Number(item.total_harga || 0),
+            status: item.status_order,
+         })),
+      ];
+
+      return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 8);
+   }, [validTransactions, confirmedOrders]);
+
+   const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
    return (
       <div className="admin-dashboard">
          <div className="admin-dashboard__header">
             <div>
                <h1 className="admin-dashboard__title">Dashboard Admin</h1>
-               <p>Ringkasan performa koperasi dan metrik penting setiap hari.</p>
+               <p>Ringkasan penjualan, produk, dan pendapatan koperasi.</p>
             </div>
          </div>
 
@@ -184,146 +209,160 @@ export default function AdminDashboardPage() {
             <Loading message="Memuat metrik..." size="small" />
          ) : (
             <>
-               <div className="admin-dashboard__grid">
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Produk Terdaftar</div>
-                     <div className="admin-dashboard__stats-value">{productCount}</div>
-                  </div>
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Siswa Terdaftar</div>
-                     <div className="admin-dashboard__stats-value">{studentCount}</div>
-                  </div>
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Transaksi Hari Ini</div>
-                     <div className="admin-dashboard__stats-value">{txnCountToday}</div>
-                  </div>
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Pendapatan Hari Ini</div>
-                     <div className="admin-dashboard__stats-value">{revenueLabel}</div>
-                  </div>
-               </div>
-
-               <div className="admin-dashboard__grid admin-dashboard__comparison-grid">
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Order Bulan Ini ({monthNames.current})</div>
-                     <div className="admin-dashboard__stats-value">{monthComparison.currentCount}</div>
-                     <div className="admin-dashboard__stats-note">{monthNames.previous}: {monthComparison.lastCount}</div>
-                     <div className={`admin-dashboard__stats-delta ${monthComparison.countDelta >= 0 ? "positive" : "negative"}`}>
-                        {formatDelta(monthComparison.countDelta)} dibanding bulan lalu
+               <section className="admin-dashboard__section">
+                  <div className="admin-dashboard__section-header">
+                     <div>
+                        <h2 className="admin-dashboard__section-title">Ringkasan Penjualan</h2>
+                        <p className="admin-dashboard__section-subtitle">Ikhtisar performa penjualan saat ini.</p>
                      </div>
                   </div>
-                  <div className="admin-dashboard__stats-card">
-                     <div className="admin-dashboard__stats-label">Pendapatan Bulan Ini ({monthNames.current})</div>
-                     <div className="admin-dashboard__stats-value">{formatCurrency(monthComparison.currentRevenue)}</div>
-                     <div className="admin-dashboard__stats-note">{monthNames.previous}: {formatCurrency(monthComparison.lastRevenue)}</div>
-                     <div className={`admin-dashboard__stats-delta ${monthComparison.revenueDelta >= 0 ? "positive" : "negative"}`}>
-                        {formatDelta(monthComparison.revenueDelta)} dibanding bulan lalu
+
+                  <div className="admin-dashboard__summary-grid">
+                     <div className="admin-dashboard__summary-card">
+                        <div className="admin-dashboard__summary-label">Omzet</div>
+                        <div className="admin-dashboard__summary-value">{formatCurrency(omzet)}</div>
+                        <div className="admin-dashboard__summary-caption">Hanya penjualan yang sudah lunas / dikonfirmasi</div>
+                     </div>
+                     <div className="admin-dashboard__summary-card">
+                        <div className="admin-dashboard__summary-label">Item Terjual</div>
+                        <div className="admin-dashboard__summary-value">{totalItemsSold}</div>
+                        <div className="admin-dashboard__summary-caption">Jumlah produk yang laku</div>
+                     </div>
+                     <div className="admin-dashboard__summary-card">
+                        <div className="admin-dashboard__summary-label">Transaksi</div>
+                        <div className="admin-dashboard__summary-value">{salesTimeline.length}</div>
+                        <div className="admin-dashboard__summary-caption">Gabungan transaksi kasir dan order</div>
+                     </div>
+                     <div className="admin-dashboard__summary-card">
+                        <div className="admin-dashboard__summary-label">Rata-rata Per Transaksi</div>
+                        <div className="admin-dashboard__summary-value">{formatCurrency(avgOrderValue)}</div>
+                        <div className="admin-dashboard__summary-caption">Nilai rata-rata setiap penjualan</div>
                      </div>
                   </div>
-               </div>
+               </section>
 
-               <div className="admin-dashboard__chart-card">
-                  <h2 className="admin-dashboard__chart-title">Perbandingan Bulanan</h2>
-                  <ResponsiveContainer width="100%" height={320}>
-                     <LineChart data={comparisonChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
-                        <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
-                        <Legend />
-                        <Line type="monotone" dataKey="revenueThisMonth" name={`Bulan Ini (${monthNames.current})`} stroke="#22c55e" strokeWidth={3} dot={{ r: 4 }} />
-                        <Line type="monotone" dataKey="revenueLastMonth" name={`Bulan Lalu (${monthNames.previous})`} stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} />
-                     </LineChart>
-                  </ResponsiveContainer>
-               </div>
-
-               <div className="admin-dashboard__charts">
-                  <div className="admin-dashboard__chart-card">
-                     <h2 className="admin-dashboard__chart-title">Order Siswa - 7 Hari Terakhir</h2>
-                     <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+               <section className="admin-dashboard__section">
+                  <div className="admin-dashboard__section-header">
+                     <div>
+                        <h2 className="admin-dashboard__section-title">Grafik Penjualan</h2>
+                        <p className="admin-dashboard__section-subtitle">Perkembangan penjualan 7 hari terakhir.</p>
+                     </div>
+                  </div>
+                  <div className="admin-dashboard__chart-wrap">
+                     <ResponsiveContainer width="100%" height={320}>
+                        <LineChart data={salesChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                           <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                           <YAxis axisLine={false} tickLine={false} />
-                           <Tooltip formatter={(value) => new Intl.NumberFormat("id-ID").format(value)} />
-                           <Bar dataKey="orders" fill="#2563eb" radius={[8, 8, 0, 0]} />
-                        </BarChart>
+                           <XAxis dataKey="label" axisLine={false} tickLine={false} />
+                           <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
+                           <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
+                           <Legend />
+                           <Line type="monotone" dataKey="revenue" name="Pendapatan" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+                        </LineChart>
                      </ResponsiveContainer>
                   </div>
+               </section>
 
-                  <div className="admin-dashboard__chart-card">
-                     <h2 className="admin-dashboard__chart-title">Pendapatan Order Siswa</h2>
-                     <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                           <defs>
-                              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                 <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8} />
-                                 <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.05} />
-                              </linearGradient>
-                           </defs>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                           <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                           <YAxis axisLine={false} tickLine={false} />
-                           <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString()}`} />
-                           <Area type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                        </AreaChart>
-                     </ResponsiveContainer>
+               <section className="admin-dashboard__section admin-dashboard__section--split">
+                  <div className="admin-dashboard__panel">
+                     <div className="admin-dashboard__section-header">
+                        <div>
+                           <h2 className="admin-dashboard__section-title">Produk Terlaris</h2>
+                           <p className="admin-dashboard__section-subtitle">Produk dengan penjualan terbanyak.</p>
+                        </div>
+                     </div>
+                     <div className="admin-dashboard__list">
+                        {topProducts.length === 0 ? (
+                           <div className="admin-dashboard__empty">Belum ada data penjualan.</div>
+                        ) : (
+                           topProducts.map((product, index) => (
+                              <div key={product.id} className="admin-dashboard__list-item">
+                                 <div>
+                                    <div className="admin-dashboard__list-title">{index + 1}. {product.name}</div>
+                                    <div className="admin-dashboard__list-meta">{product.qty} terjual • stok {product.stock}</div>
+                                 </div>
+                                 <div className="admin-dashboard__list-value">{formatCurrency(product.revenue)}</div>
+                              </div>
+                           ))
+                        )}
+                     </div>
                   </div>
-               </div>
 
-               <div className="admin-dashboard__charts">
-                  <div className="admin-dashboard__chart-card">
-                     <h2 className="admin-dashboard__chart-title">Ringkasan Top-Up & Order</h2>
-                     <div className="admin-dashboard__small-grid">
-                        <div className="admin-dashboard__stats-card">
-                           <div className="admin-dashboard__stats-label">Jumlah Top-Up</div>
-                           <div className="admin-dashboard__stats-value">{topupCount}</div>
+                  <div className="admin-dashboard__panel">
+                     <div className="admin-dashboard__section-header">
+                        <div>
+                           <h2 className="admin-dashboard__section-title">Produk Hampir Habis</h2>
+                           <p className="admin-dashboard__section-subtitle">Stok tersisa 5 item atau kurang.</p>
                         </div>
-                        <div className="admin-dashboard__stats-card">
-                           <div className="admin-dashboard__stats-label">Total Order Siswa</div>
-                           <div className="admin-dashboard__stats-value">{orderCount}</div>
+                     </div>
+                     <div className="admin-dashboard__list">
+                        {lowStockProducts.length === 0 ? (
+                           <div className="admin-dashboard__empty">Semua produk masih aman.</div>
+                        ) : (
+                           lowStockProducts.map((product) => (
+                              <div key={product.id} className="admin-dashboard__list-item">
+                                 <div>
+                                    <div className="admin-dashboard__list-title">{product.nama_produk}</div>
+                                    <div className="admin-dashboard__list-meta">Sisa stok: {product.stok}</div>
+                                 </div>
+                                 <span className="admin-dashboard__pill">Segera isi</span>
+                              </div>
+                           ))
+                        )}
+                     </div>
+                  </div>
+               </section>
+
+               <section className="admin-dashboard__section admin-dashboard__section--split">
+                  <div className="admin-dashboard__panel">
+                     <div className="admin-dashboard__section-header">
+                        <div>
+                           <h2 className="admin-dashboard__section-title">Pendapatan</h2>
+                           <p className="admin-dashboard__section-subtitle">Estimasi keuntungan dari penjualan.</p>
                         </div>
-                        <div className="admin-dashboard__stats-card">
-                           <div className="admin-dashboard__stats-label">Pendapatan Order</div>
-                           <div className="admin-dashboard__stats-value">{orderRevenueLabel}</div>
+                     </div>
+                     <div className="admin-dashboard__income-grid">
+                        <div className="admin-dashboard__income-card">
+                           <div className="admin-dashboard__summary-label">Omzet</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(omzet)}</div>
+                        </div>
+                        <div className="admin-dashboard__income-card">
+                           <div className="admin-dashboard__summary-label">Laba Kotor</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(labaKotor)}</div>
+                        </div>
+                        <div className="admin-dashboard__income-card">
+                           <div className="admin-dashboard__summary-label">Estimasi Laba Bersih</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(estimasiLabaBersih)}</div>
                         </div>
                      </div>
                   </div>
 
-                  <div className="admin-dashboard__table-card">
-                     <h2 className="admin-dashboard__table-title">Transaksi Terbaru</h2>
-                     <div className="admin-dashboard__table-wrap">
-                        <table className="admin-dashboard__table">
-                           <thead>
-                              <tr>
-                                 <th>Tanggal</th>
-                                 <th>Metode</th>
-                                 <th>Status</th>
-                                 <th>Total</th>
-                              </tr>
-                           </thead>
-                           <tbody>
-                              {latestTransactions.length === 0 ? (
-                                 <tr>
-                                    <td className="admin-dashboard__table-empty" colSpan={4}>
-                                       Belum ada transaksi.
-                                    </td>
-                                 </tr>
-                              ) : (
-                                 latestTransactions.map((item) => (
-                                    <tr key={item.id}>
-                                       <td>{new Date(item.created_at).toLocaleString("id-ID")}</td>
-                                       <td>{item.metode_pembayaran}</td>
-                                       <td>{item.status_pembayaran}</td>
-                                       <td>Rp {Number(item.total_bayar || 0).toLocaleString()}</td>
-                                    </tr>
-                                 ))
-                              )}
-                           </tbody>
-                        </table>
+                  <div className="admin-dashboard__panel">
+                     <div className="admin-dashboard__section-header">
+                        <div>
+                           <h2 className="admin-dashboard__section-title">Transaksi Terbaru</h2>
+                           <p className="admin-dashboard__section-subtitle">Aktivitas penjualan terakhir.</p>
+                        </div>
+                     </div>
+                     <div className="admin-dashboard__list">
+                        {latestActivity.length === 0 ? (
+                           <div className="admin-dashboard__empty">Belum ada aktivitas terbaru.</div>
+                        ) : (
+                           latestActivity.map((item) => (
+                              <div key={`${item.type}-${item.id}`} className="admin-dashboard__list-item">
+                                 <div>
+                                    <div className="admin-dashboard__list-title">{item.label}</div>
+                                    <div className="admin-dashboard__list-meta">{new Date(item.created_at).toLocaleString("id-ID")}</div>
+                                 </div>
+                                 <div className="admin-dashboard__activity-meta">
+                                    <div className="admin-dashboard__list-value">{formatCurrency(item.amount)}</div>
+                                    <span className="admin-dashboard__pill">{item.status}</span>
+                                 </div>
+                              </div>
+                           ))
+                        )}
                      </div>
                   </div>
-               </div>
+               </section>
             </>
          )}
       </div>

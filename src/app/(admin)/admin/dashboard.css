@@ -16,20 +16,7 @@
    font-size: clamp(1.8rem, 2.6vw, 2.25rem);
 }
 
-.admin-dashboard__grid {
-   display: grid;
-   grid-template-columns: repeat(4, minmax(0, 1fr));
-   gap: 1.25rem;
-}
-
-.admin-dashboard__charts {
-   display: grid;
-   grid-template-columns: 1.5fr 1fr;
-   gap: 1.25rem;
-}
-
-.admin-dashboard__chart-card,
-.admin-dashboard__table-card {
+.admin-dashboard__section {
    background: #fff;
    border: 1px solid rgba(148, 163, 184, 0.18);
    border-radius: 24px;
@@ -37,96 +24,133 @@
    padding: 1.5rem;
 }
 
-.admin-dashboard__chart-title,
-.admin-dashboard__table-title {
-   margin: 0 0 1rem;
-   font-size: 1.05rem;
+.admin-dashboard__section--split {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: 1.25rem;
+}
+
+.admin-dashboard__section-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 1rem;
+}
+
+.admin-dashboard__section-title {
+   margin: 0;
+   font-size: 1.1rem;
    font-weight: 700;
 }
 
-.admin-dashboard__small-grid {
-   display: grid;
-   gap: 1rem;
-}
-
-.admin-dashboard__stats-card {
-   background: #f8fafc;
-   border-radius: 20px;
-   padding: 1.25rem;
-   display: grid;
-   gap: 0.35rem;
-}
-
-.admin-dashboard__stats-label {
+.admin-dashboard__section-subtitle {
+   margin: 0.2rem 0 0;
    color: #64748b;
    font-size: 0.95rem;
 }
 
-.admin-dashboard__stats-value {
-   font-size: 1.75rem;
+.admin-dashboard__summary-grid {
+   display: grid;
+   grid-template-columns: repeat(4, minmax(0, 1fr));
+   gap: 1rem;
+}
+
+.admin-dashboard__summary-card,
+.admin-dashboard__income-card,
+.admin-dashboard__panel {
+   background: #f8fafc;
+   border-radius: 20px;
+   padding: 1.15rem;
+}
+
+.admin-dashboard__summary-label {
+   color: #64748b;
+   font-size: 0.95rem;
+}
+
+.admin-dashboard__summary-value {
+   font-size: 1.45rem;
+   font-weight: 700;
+   color: #0f172a;
+   margin-top: 0.25rem;
+}
+
+.admin-dashboard__summary-caption {
+   color: #64748b;
+   font-size: 0.9rem;
+   margin-top: 0.3rem;
+}
+
+.admin-dashboard__chart-wrap {
+   margin-top: 0.5rem;
+}
+
+.admin-dashboard__income-grid {
+   display: grid;
+   gap: 0.85rem;
+}
+
+.admin-dashboard__list {
+   display: grid;
+   gap: 0.75rem;
+}
+
+.admin-dashboard__list-item {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   gap: 0.75rem;
+   padding: 0.8rem 0;
+   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.admin-dashboard__list-item:last-child {
+   border-bottom: none;
+}
+
+.admin-dashboard__list-title {
    font-weight: 700;
    color: #0f172a;
 }
 
-.admin-dashboard__stats-note {
-   color: #475569;
-   font-size: 0.95rem;
-   margin-top: 0.5rem;
-}
-
-.admin-dashboard__stats-delta {
-   margin-top: 0.75rem;
-   font-size: 0.95rem;
-   font-weight: 700;
-}
-
-.admin-dashboard__stats-delta.positive {
-   color: #16a34a;
-}
-
-.admin-dashboard__stats-delta.negative {
-   color: #dc2626;
-}
-
-.admin-dashboard__comparison-grid {
-   display: grid;
-   grid-template-columns: repeat(2, minmax(0, 1fr));
-   gap: 1.25rem;
-}
-
-.admin-dashboard__table {
-   width: 100%;
-   border-collapse: collapse;
-}
-
-.admin-dashboard__table th,
-.admin-dashboard__table td {
-   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-   padding: 0.95rem 0.75rem;
-   text-align: left;
-}
-
-.admin-dashboard__table th {
-   color: #475569;
-   font-size: 0.95rem;
-   font-weight: 700;
-}
-
-.admin-dashboard__table tr:hover {
-   background: #f8fafc;
-}
-
-.admin-dashboard__table-empty {
-   padding: 1.5rem;
+.admin-dashboard__list-meta {
    color: #64748b;
-   text-align: center;
+   font-size: 0.9rem;
+   margin-top: 0.2rem;
+}
+
+.admin-dashboard__list-value {
+   font-weight: 700;
+   color: #0f172a;
+   white-space: nowrap;
+}
+
+.admin-dashboard__pill {
+   display: inline-flex;
+   align-items: center;
+   padding: 0.25rem 0.6rem;
+   border-radius: 999px;
+   background: #dbeafe;
+   color: #1d4ed8;
+   font-size: 0.8rem;
+   font-weight: 700;
+}
+
+.admin-dashboard__activity-meta {
+   display: grid;
+   justify-items: end;
+   gap: 0.25rem;
+}
+
+.admin-dashboard__empty {
+   color: #64748b;
+   padding: 0.85rem 0;
 }
 
 @media (max-width: 1100px) {
 
-   .admin-dashboard__grid,
-   .admin-dashboard__charts,
-   .admin-dashboard__comparison-grid {
+   .admin-dashboard__summary-grid,
+   .admin-dashboard__section--split {
       grid-template-columns: 1fr;
    }
 }
@@ -135,5 +159,9 @@
    .admin-dashboard__header {
       flex-direction: column;
       align-items: stretch;
+   }
+
+   .admin-dashboard__section {
+      padding: 1.1rem;
    }
 }
