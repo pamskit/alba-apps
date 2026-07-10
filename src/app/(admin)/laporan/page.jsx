@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
+import { toast } from "react-hot-toast";
 import "./laporan.css";
 
 const supabase = createClient();
@@ -304,7 +305,7 @@ export default function LaporanPage() {
    function handleExportPdf() {
       const printWindow = window.open("", "_blank", "width=1200,height=900");
       if (!printWindow) {
-         alert("Popup diblokir. Izinkan popup untuk mencetak laporan.");
+         toast.error("Popup diblokir. Izinkan popup untuk mencetak laporan.");
          return;
       }
 

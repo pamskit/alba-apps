@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import "./produk.css";
@@ -35,7 +36,7 @@ export default function ProdukPage() {
          setProducts(data ?? []);
       } catch (err) {
          console.error(err);
-         alert("Gagal memuat produk");
+         toast.error("Gagal memuat produk");
       } finally {
          setLoading(false);
       }
@@ -55,7 +56,7 @@ export default function ProdukPage() {
          await fetchProducts();
       } catch (err) {
          console.error(err);
-         alert("Gagal memperbarui stok");
+         toast.error("Gagal memperbarui stok");
       } finally {
          setLoading(false);
       }
@@ -63,7 +64,7 @@ export default function ProdukPage() {
 
    async function handleAddProduct(e) {
       e.preventDefault();
-      if (!newNama) return alert("Isi nama produk");
+      if (!newNama) return toast.error("Isi nama produk");
       setLoading(true);
       try {
          const { error } = await supabase
@@ -82,7 +83,7 @@ export default function ProdukPage() {
          await fetchProducts();
       } catch (err) {
          console.error(err);
-         alert("Gagal menambahkan produk");
+         toast.error("Gagal menambahkan produk");
       } finally {
          setLoading(false);
       }
@@ -352,7 +353,7 @@ export default function ProdukPage() {
                                              await fetchProducts();
                                           } catch (err) {
                                              console.error(err);
-                                             alert("Gagal menghapus produk");
+                                             toast.error("Gagal menghapus produk");
                                           } finally {
                                              setLoading(false);
                                           }

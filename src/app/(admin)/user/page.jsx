@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import "./user.css";
@@ -61,7 +62,7 @@ export default function UserPage() {
          setTeachers(teacherRes.data ?? []);
       } catch (err) {
          console.error(err);
-         alert("Gagal memuat data user");
+         toast.error("Gagal memuat data user");
       } finally {
          setLoading(false);
       }
@@ -69,7 +70,7 @@ export default function UserPage() {
 
    async function handleAdd(e) {
       e.preventDefault();
-      if (!id || !name) return alert(`Isi ${currentIdLabel} dan ${currentNameLabel}`);
+      if (!id || !name) return toast.error(`Isi ${currentIdLabel} dan ${currentNameLabel}`);
       setLoading(true);
       try {
          const payload = isSiswa
@@ -94,7 +95,7 @@ export default function UserPage() {
          await fetchData();
       } catch (err) {
          console.error(err);
-         alert(`Gagal menambahkan ${currentLabel.toLowerCase()}`);
+         toast.error(`Gagal menambahkan ${currentLabel.toLowerCase()}`);
       } finally {
          setLoading(false);
       }
@@ -109,7 +110,7 @@ export default function UserPage() {
          await fetchData();
       } catch (err) {
          console.error(err);
-         alert(`Gagal menghapus ${currentLabel.toLowerCase()}`);
+         toast.error(`Gagal menghapus ${currentLabel.toLowerCase()}`);
       } finally {
          setLoading(false);
       }
@@ -143,7 +144,7 @@ export default function UserPage() {
          await fetchData();
       } catch (err) {
          console.error(err);
-         alert(`Gagal memperbarui ${currentLabel.toLowerCase()}`);
+         toast.error(`Gagal memperbarui ${currentLabel.toLowerCase()}`);
       } finally {
          setLoading(false);
       }

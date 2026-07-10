@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Select from "react-select";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 
 const supabase = createClient();
@@ -68,18 +69,17 @@ export default function AdminTopupSaldoPage() {
       event.preventDefault();
       const amountValue = Number(amount);
 
-      if (!amountValue || amountValue <= 0) return alert("Jumlah top-up harus lebih besar dari 0.");
+      if (!amountValue || amountValue <= 0) return toast.error("Jumlah top-up harus lebih besar dari 0.");
 
       const isSiswa = selectedType === "siswa";
       const selectedId = isSiswa ? selectedSiswa : selectedGuru;
-      if (!selectedId) return alert(`Pilih ${isSiswa ? "siswa" : "guru"} terlebih dahulu.`);
+      if (!selectedId) return toast.error(`Pilih ${isSiswa ? "siswa" : "guru"} terlebih dahulu.`);
 
       setLoading(true);
       try {
          if (isSiswa) {
             const student = siswa.find((item) => String(item.nis) === String(selectedId));
-            if (!student) return alert("Siswa tidak ditemukan.");
-
+            if (!student) return toast.error("Siswa tidak ditemukan.");
             const newSaldo = Number(student.saldo ?? 0) + amountValue;
             const { error: updateError } = await supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", selectedId);
             if (updateError) throw updateError;
@@ -93,8 +93,7 @@ export default function AdminTopupSaldoPage() {
             if (insertError) throw insertError;
          } else {
             const teacher = guru.find((item) => String(item.nip) === String(selectedId));
-            if (!teacher) return alert("Guru tidak ditemukan.");
-
+            if (!teacher) return toast.error("Guru tidak ditemukan.");
             const newSaldo = Number(teacher.saldo ?? 0) + amountValue;
             const { error: updateError } = await supabase.from("guru").update({ saldo: newSaldo }).eq("nip", selectedId);
             if (updateError) throw updateError;
@@ -108,7 +107,7 @@ export default function AdminTopupSaldoPage() {
             if (insertError) throw insertError;
          }
 
-         alert("Top-up saldo berhasil.");
+         toast.success("Top-up saldo berhasil.");
          setAmount("");
          setNote("");
          setSelectedSiswa("");
@@ -116,7 +115,7 @@ export default function AdminTopupSaldoPage() {
          await Promise.all([fetchSiswa(), fetchGuru()]);
       } catch (error) {
          console.error(error);
-         alert("Gagal melakukan top-up saldo.");
+         toast.error("Gagal melakukan top-up saldo.");
       } finally {
          setLoading(false);
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import { getAuthSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
@@ -85,16 +86,16 @@ export default function GuruHutangPage() {
       if (!teacher) return;
       const amount = Number(paymentAmount);
       if (!amount || amount <= 0) {
-         return alert("Masukkan nominal pembayaran yang valid.");
+         return toast.error("Masukkan nominal pembayaran yang valid.");
       }
 
       const currentHutang = Number(teacher.total_hutang ?? 0);
       if (amount > currentHutang) {
-         return alert("Nominal pembayaran tidak boleh melebihi total hutang.");
+         return toast.error("Nominal pembayaran tidak boleh melebihi total hutang.");
       }
 
       if (amount > Number(teacher.saldo ?? 0)) {
-         return alert("Saldo tidak cukup untuk membayar hutang ini.");
+         return toast.error("Saldo tidak cukup untuk membayar hutang ini.");
       }
 
       setProcessing(true);
@@ -138,10 +139,10 @@ export default function GuruHutangPage() {
          setPaymentAmount(newHutang);
          await fetchData();
 
-         alert("Pembayaran hutang berhasil.");
+         toast.success("Pembayaran hutang berhasil.");
       } catch (error) {
          console.error(error);
-         alert("Gagal memproses pembayaran hutang.");
+         toast.error("Gagal memproses pembayaran hutang.");
       } finally {
          setProcessing(false);
       }

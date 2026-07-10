@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import {
@@ -173,7 +174,7 @@ export default function PengurusLaporanPage() {
    function handleExportPdf() {
       const printWindow = window.open("", "_blank", "width=1200,height=900");
       if (!printWindow) {
-         alert("Popup diblokir. Izinkan popup untuk mencetak laporan.");
+         toast.error("Popup diblokir. Izinkan popup untuk mencetak laporan.");
          return;
       }
 

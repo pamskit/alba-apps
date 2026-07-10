@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import "./kasir.css";
 
@@ -108,15 +109,15 @@ export default function KasirPage() {
 
    async function handleProcess() {
       const customerId = selectedCustomer?.value;
-      if (!customerId) return alert(`Pilih ${customerLabel} terlebih dahulu`);
-      if (cart.length === 0) return alert("Keranjang kosong");
+      if (!customerId) return toast.error(`Pilih ${customerLabel} terlebih dahulu`);
+      if (cart.length === 0) return toast.error("Keranjang kosong");
 
       // Validate saldo for Saldo payment method
       if (paymentMethod === "Saldo") {
          const customerObj = customerType === "siswa" ? selectedSiswa?.siswa : selectedGuru?.guru;
          const customerSaldo = Number(customerObj?.saldo ?? 0);
          if (customerSaldo < total) {
-            return alert(`Saldo tidak cukup. Saldo: Rp ${customerSaldo.toLocaleString()}, Total: Rp ${total.toLocaleString()}`);
+            return toast.error(`Saldo tidak cukup. Saldo: Rp ${customerSaldo.toLocaleString()}, Total: Rp ${total.toLocaleString()}`);
          }
       }
 
@@ -178,13 +179,13 @@ export default function KasirPage() {
             }
          }
 
-         alert("Transaksi berhasil");
+         toast.success("Transaksi berhasil");
          setCart([]);
          await fetchAll();
       } catch (err) {
          console.error("Error detail:", err);
          const errorMsg = err?.message || err?.error_description || JSON.stringify(err) || "Error tidak diketahui";
-         alert(`Error: ${errorMsg}`);
+         toast.error(`Error: ${errorMsg}`);
       } finally {
          setLoading(false);
       }

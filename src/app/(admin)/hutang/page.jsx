@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import "./hutang.css";
 
@@ -67,11 +68,11 @@ export default function BukuHutangPage() {
       const remaining = Number(selectedEntry.total_hutang) - amount;
 
       if (!amount || amount <= 0) {
-         return alert("Masukkan nominal pembayaran yang valid");
+         return toast.error("Masukkan nominal pembayaran yang valid");
       }
 
       if (amount > Number(selectedEntry.total_hutang)) {
-         return alert("Nominal pembayaran tidak boleh lebih besar dari total hutang");
+         return toast.error("Nominal pembayaran tidak boleh lebih besar dari total hutang");
       }
 
       setLoading(true);
@@ -110,10 +111,10 @@ export default function BukuHutangPage() {
          setSelectedEntry(null);
          setPaymentAmount("");
          await Promise.all([fetchStudents(), fetchTeachers()]);
-         alert("Pembayaran hutang berhasil disimpan");
+         toast.success("Pembayaran hutang berhasil disimpan");
       } catch (error) {
          console.error(error);
-         alert("Gagal memproses pembayaran hutang");
+         toast.error("Gagal memproses pembayaran hutang");
       } finally {
          setLoading(false);
       }

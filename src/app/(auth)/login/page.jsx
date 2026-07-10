@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 import { clearAuthSession, getAuthSession, saveAuthSession } from "@/utils/auth";
 
 function UnifiedLoginContent() {
@@ -76,10 +77,10 @@ function UnifiedLoginContent() {
             return;
          }
 
-         alert("Role tidak diketahui.");
+         toast.error("Role tidak diketahui.");
       } catch (error) {
          console.error(error);
-         alert(error.message || "Terjadi kesalahan saat login.");
+         toast.error(error.message || "Terjadi kesalahan saat login.");
       } finally {
          setLoading(false);
       }
@@ -98,13 +99,13 @@ function UnifiedLoginContent() {
                   <input
                      value={identifier}
                      onChange={(e) => setIdentifier(e.target.value)}
-                     placeholder="admin, pengurus, 1001 (siswa), atau 2001 (guru)"
+                     placeholder="Masukan username..."
                      required
                   />
                </label>
                <label>
                   Password
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukan password..." required />
                </label>
                <button type="submit" disabled={loading} className="btn btn--primary">
                   {loading ? "Memproses..." : "Masuk"}
