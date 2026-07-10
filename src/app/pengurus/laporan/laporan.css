@@ -1,0 +1,181 @@
+.laporan-page {
+   display: grid;
+   gap: 1.5rem;
+}
+
+.laporan-page__header {
+   display: flex;
+   flex-wrap: wrap;
+   justify-content: space-between;
+   gap: 1rem;
+   align-items: center;
+}
+
+.laporan-page__title {
+   margin: 0;
+   font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+}
+
+.laporan-page__subtitle {
+   margin: 0.5rem 0 0;
+   color: #64748b;
+   max-width: 45rem;
+}
+
+.laporan-page__filter {
+   display: flex;
+   gap: 0.75rem;
+   flex-wrap: wrap;
+   align-items: center;
+}
+
+.laporan-page__label {
+   font-size: 0.95rem;
+   color: #475569;
+}
+
+.laporan-page__select {
+   border: 1px solid #cbd5e1;
+   border-radius: 0.75rem;
+   padding: 0.75rem 0.9rem;
+   background: #ffffff;
+   color: #0f172a;
+}
+
+.laporan-page__button {
+   white-space: nowrap;
+}
+
+.report-print-header,
+.report-section {
+   background: #ffffff;
+   border: 1px solid rgba(148, 163, 184, 0.18);
+   border-radius: 24px;
+   box-shadow: 0 24px 54px rgba(15, 23, 42, 0.06);
+   padding: 1.5rem;
+}
+
+.report-print-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   gap: 1rem;
+}
+
+.report-print-header__brand {
+   display: flex;
+   align-items: center;
+   gap: 1rem;
+}
+
+.report-print-header__badge {
+   width: 48px;
+   height: 48px;
+   border-radius: 999px;
+   background: #0f172a;
+   color: #ffffff;
+   display: grid;
+   place-items: center;
+   font-weight: 800;
+}
+
+.report-print-header__title {
+   margin: 0;
+   font-size: 1.1rem;
+}
+
+.report-print-header__subtitle {
+   margin: 0.25rem 0 0;
+   color: #64748b;
+   font-size: 0.95rem;
+}
+
+.report-print-header__meta {
+   display: grid;
+   gap: 0.5rem;
+   text-align: right;
+}
+
+.report-print-header__label {
+   display: block;
+   color: #64748b;
+   font-size: 0.85rem;
+}
+
+.metric-grid {
+   display: grid;
+   grid-template-columns: repeat(4, minmax(0, 1fr));
+   gap: 1rem;
+   margin-top: 1.5rem;
+}
+
+.metric-card {
+   border-radius: 24px;
+   padding: 1.25rem;
+   background: #f8fafc;
+   border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.metric-card__label {
+   color: #64748b;
+   font-size: 0.95rem;
+}
+
+.metric-card__value {
+   font-size: 1.75rem;
+   font-weight: 700;
+   margin-top: 0.5rem;
+}
+
+.laporan-chart {
+   height: 320px;
+   margin-top: 1.5rem;
+}
+
+.laporan-table {
+   width: 100%;
+   border-collapse: collapse;
+   margin-top: 1rem;
+}
+
+.laporan-table__head,
+.laporan-table__cell {
+   border: 1px solid rgba(148, 163, 184, 0.18);
+   padding: 0.85rem 0.9rem;
+}
+
+.laporan-table__head {
+   background: #f8fafc;
+   color: #0f172a;
+   font-weight: 700;
+   text-align: left;
+}
+
+.laporan-table__empty {
+   padding: 1rem;
+   text-align: center;
+   color: #64748b;
+}
+
+.laporan-table__row:nth-child(even) {
+   background: rgba(248, 250, 252, 0.8);
+}
+
+@media (max-width: 1100px) {
+   .metric-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+   }
+}
+
+@media (max-width: 700px) {
+
+   .report-print-header,
+   .laporan-page__header {
+      flex-direction: column;
+      align-items: stretch;
+   }
+
+   .metric-grid {
+      grid-template-columns: 1fr;
+   }
+}

@@ -44,6 +44,32 @@ function normalizeAdminCredentials() {
   };
 }
 
+function normalizePengurusCredentials() {
+  const configuredUsername = getFirstConfiguredValue([
+    "PENGURUS_USERNAME",
+    "NEXT_PUBLIC_PENGURUS_USERNAME",
+    "PENGURUS_USER",
+    "PENGURUS_USER_NAME",
+  ]);
+  const configuredPassword = getFirstConfiguredValue([
+    "PENGURUS_PASSWORD",
+    "NEXT_PUBLIC_PENGURUS_PASSWORD",
+    "PENGURUS_PASS",
+    "PENGURUS_PWD",
+  ]);
+  const configuredPasswordHash = getFirstConfiguredValue([
+    "PENGURUS_PASSWORD_HASH",
+    "NEXT_PUBLIC_PENGURUS_PASSWORD_HASH",
+    "PENGURUS_HASH",
+  ]);
+
+  return {
+    username: configuredUsername || "pengurus",
+    password: configuredPassword || "",
+    passwordHash: configuredPasswordHash || "",
+  };
+}
+
 function verifyPassword(inputPassword, expectedPassword, expectedHash) {
   if (!inputPassword) return false;
 
@@ -66,6 +92,7 @@ export async function POST(req) {
     const normalizedIdentifier = String(identifier).trim();
 
     const { username: adminUsername, password: adminPassword, passwordHash: adminPasswordHash } = normalizeAdminCredentials();
+    const { username: pengurusUsername, password: pengurusPassword, passwordHash: pengurusPasswordHash } = normalizePengurusCredentials();
 
     if (normalizedIdentifier.toLowerCase() === adminUsername.toLowerCase()) {
       if (!adminPassword && !adminPasswordHash) {
@@ -77,6 +104,25 @@ export async function POST(req) {
       }
 
       const session = { role: "admin", username: adminUsername };
+      return new Response(JSON.stringify({ success: true, session }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": createSessionCookie(session),
+        },
+      });
+    }
+
+    if (normalizedIdentifier.toLowerCase() === pengurusUsername.toLowerCase()) {
+      if (!pengurusPassword && !pengurusPasswordHash) {
+        return Response.json({ error: "Pengurus belum dikonfigurasi. Setel PENGURUS_USERNAME dan PENGURUS_PASSWORD atau PENGURUS_PASSWORD_HASH di environment server." }, { status: 503 });
+      }
+
+      if (!verifyPassword(password, pengurusPassword, pengurusPasswordHash)) {
+        return Response.json({ error: "Username atau password pengurus salah." }, { status: 401 });
+      }
+
+      const session = { role: "pengurus", username: pengurusUsername };
       return new Response(JSON.stringify({ success: true, session }), {
         status: 200,
         headers: {

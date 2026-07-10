@@ -19,6 +19,11 @@ function UnifiedLoginContent() {
          return;
       }
 
+      if (session.role === "pengurus") {
+         router.replace("/pengurus/laporan");
+         return;
+      }
+
       if (session.role === "guru") {
          router.replace("/guru/dashboard");
          return;
@@ -56,6 +61,11 @@ function UnifiedLoginContent() {
             return;
          }
 
+         if (result.session.role === "pengurus") {
+            router.replace("/pengurus/laporan");
+            return;
+         }
+
          if (result.session.role === "guru") {
             router.replace("/guru/dashboard");
             return;
@@ -79,8 +89,8 @@ function UnifiedLoginContent() {
       <main className="auth-page">
          <section className="auth-card">
             <h1>Masuk ke Koperasi</h1>
-            <p>Masukkan username admin, NIS siswa, atau NIP guru untuk masuk ke sistem.</p>
-            <p className="auth-help-text">Untuk admin, password dapat diatur dari environment server agar lebih aman dan tidak tertulis di kode.</p>
+            <p>Masukkan username admin/pengurus, NIS siswa, atau NIP guru untuk masuk ke sistem.</p>
+            <p className="auth-help-text">Untuk admin dan pengurus, password dapat diatur dari environment server agar lebih aman dan tidak tertulis di kode.</p>
 
             <form onSubmit={handleSubmit} className="auth-form">
                <label>
@@ -88,7 +98,7 @@ function UnifiedLoginContent() {
                   <input
                      value={identifier}
                      onChange={(e) => setIdentifier(e.target.value)}
-                     placeholder="admin, 1001 (siswa), atau 2001 (guru)"
+                     placeholder="admin, pengurus, 1001 (siswa), atau 2001 (guru)"
                      required
                   />
                </label>
