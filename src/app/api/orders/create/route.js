@@ -73,11 +73,12 @@ export async function POST(req) {
         );
       }
 
-      totalHarga += produk.harga * item.jumlah;
+      const hargaJual = Number(produk.harga_jual ?? produk.harga_beli ?? 0);
+      totalHarga += hargaJual * item.jumlah;
       detailData.push({
         produk_id: item.produk_id,
         jumlah: item.jumlah,
-        harga_satuan: produk.harga,
+        harga_satuan: hargaJual,
       });
     }
 

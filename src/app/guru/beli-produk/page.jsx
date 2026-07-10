@@ -40,7 +40,7 @@ export default function BeliProdukGuruPage() {
                   .select("nip,nama_guru,saldo,total_hutang")
                   .eq("nip", nipSession)
                   .maybeSingle(),
-               supabase.from("produk").select("id,nama_produk,harga,stok").order("nama_produk", { ascending: true }),
+               supabase.from("produk").select("*").order("nama_produk", { ascending: true }),
                supabase
                   .from("order_guru")
                   .select("id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran")
@@ -85,14 +85,14 @@ export default function BeliProdukGuruPage() {
       return products.filter((product) => {
          return (
             product.nama_produk.toLowerCase().includes(q) ||
-            String(product.harga).includes(q) ||
+            String(product.harga_jual ?? product.harga_beli ?? "").includes(q) ||
             String(product.stok).includes(q)
          );
       });
    }, [products, searchQuery]);
 
    const cartTotal = useMemo(() => {
-      return cartItems.reduce((sum, item) => sum + item.harga * item.quantity, 0);
+      return cartItems.reduce((sum, item) => sum + Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0) * item.quantity, 0);
    }, [cartItems]);
 
    function addToCart(product) {
@@ -161,7 +161,7 @@ export default function BeliProdukGuruPage() {
             order_id: orderId,
             produk_id: item.id,
             jumlah: item.quantity,
-            harga_satuan: item.harga,
+            harga_satuan: Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0),
          }));
 
          const { error: detailError } = await supabase.from("detail_order_guru").insert(detailOrders);
@@ -253,7 +253,7 @@ export default function BeliProdukGuruPage() {
                         <div key={product.id} className="product-card">
                            <div className="product-card__name">{product.nama_produk}</div>
                            <div className="product-card__info">
-                              <div className="product-card__price">Rp {Number(product.harga).toLocaleString()}</div>
+                              <div className="product-card__price">Rp {Number(product.harga_jual ?? product.harga_beli ?? 0).toLocaleString()}</div>
                               <div className="product-card__stok">Stok: {product.stok}</div>
                            </div>
                            <div className="product-card__actions">
@@ -296,7 +296,7 @@ export default function BeliProdukGuruPage() {
                               <div>
                                  <div className="cart-item__name">{item.nama_produk}</div>
                                  <div className="cart-item__qty">
-                                    Rp {Number(item.harga).toLocaleString()} x {item.quantity}
+                                    Rp {Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0).toLocaleString()} x {item.quantity}
                                  </div>
                               </div>
                               <div className="cart-item__remove" onClick={() => removeFromCart(item.id)}>

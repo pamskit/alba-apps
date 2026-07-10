@@ -14,7 +14,8 @@ export default function ProdukPage() {
    const [editStockValue, setEditStockValue] = useState(0);
 
    const [newNama, setNewNama] = useState("");
-   const [newHarga, setNewHarga] = useState(0);
+   const [newHargaBeli, setNewHargaBeli] = useState(0);
+   const [newHargaJual, setNewHargaJual] = useState(0);
    const [newStok, setNewStok] = useState(0);
    const [searchQuery, setSearchQuery] = useState("");
    const [csvFile, setCsvFile] = useState(null);
@@ -29,7 +30,7 @@ export default function ProdukPage() {
    async function fetchProducts() {
       setLoading(true);
       try {
-         const { data, error } = await supabase.from("produk").select("id,nama_produk,harga,stok").order("nama_produk", { ascending: true });
+         const { data, error } = await supabase.from("produk").select("*").order("nama_produk", { ascending: true });
          if (error) throw error;
          setProducts(data ?? []);
       } catch (err) {
@@ -67,10 +68,16 @@ export default function ProdukPage() {
       try {
          const { error } = await supabase
             .from("produk")
-            .insert({ nama_produk: newNama, harga: Number(newHarga), stok: Number(newStok) });
+            .insert({
+               nama_produk: newNama,
+               harga_beli: Number(newHargaBeli),
+               harga_jual: Number(newHargaJual),
+               stok: Number(newStok),
+            });
          if (error) throw error;
          setNewNama("");
-         setNewHarga(0);
+         setNewHargaBeli(0);
+         setNewHargaJual(0);
          setNewStok(0);
          await fetchProducts();
       } catch (err) {
@@ -82,7 +89,7 @@ export default function ProdukPage() {
    }
 
    function downloadCsvTemplate() {
-      const header = ["nama_produk", "harga", "stok"];
+      const header = ["nama_produk", "harga_beli", "harga_jual", "stok"];
       const csv = [header.join(",")].join("\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -113,31 +120,36 @@ export default function ProdukPage() {
          }
 
          const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-         const expected = ["nama_produk", "harga", "stok"];
+         const expected = ["nama_produk", "harga_beli", "harga_jual", "stok"];
          if (headers.length !== expected.length || !expected.every((name, idx) => headers[idx] === name)) {
-            throw new Error("Header CSV harus: nama_produk,harga,stok");
+            throw new Error("Header CSV harus: nama_produk,harga_beli,harga_jual,stok");
          }
 
          const rows = lines.slice(1).map((line, index) => {
             const cols = line.split(",").map((col) => col.trim());
             if (cols.length !== expected.length) {
-               throw new Error(`Baris ${index + 2} tidak memiliki 3 kolom.`);
+               throw new Error(`Baris ${index + 2} tidak memiliki 4 kolom.`);
             }
-            const [nama_produk, harga, stok] = cols;
+            const [nama_produk, harga_beli, harga_jual, stok] = cols;
             if (!nama_produk) {
                throw new Error(`Baris ${index + 2}: nama_produk wajib diisi.`);
             }
-            const hargaNumber = Number(harga);
+            const hargaBeliNumber = Number(harga_beli);
+            const hargaJualNumber = Number(harga_jual);
             const stokNumber = Number(stok);
-            if (Number.isNaN(hargaNumber) || hargaNumber < 0) {
-               throw new Error(`Baris ${index + 2}: harga harus angka >= 0.`);
+            if (Number.isNaN(hargaBeliNumber) || hargaBeliNumber < 0) {
+               throw new Error(`Baris ${index + 2}: harga_beli harus angka >= 0.`);
+            }
+            if (Number.isNaN(hargaJualNumber) || hargaJualNumber < 0) {
+               throw new Error(`Baris ${index + 2}: harga_jual harus angka >= 0.`);
             }
             if (Number.isNaN(stokNumber) || stokNumber < 0) {
                throw new Error(`Baris ${index + 2}: stok harus angka >= 0.`);
             }
             return {
                nama_produk,
-               harga: hargaNumber,
+               harga_beli: hargaBeliNumber,
+               harga_jual: hargaJualNumber,
                stok: stokNumber,
             };
          });
@@ -161,7 +173,8 @@ export default function ProdukPage() {
       const lowerQuery = searchQuery.toLowerCase();
       return (
          product.nama_produk.toLowerCase().includes(lowerQuery) ||
-         String(product.harga).includes(lowerQuery) ||
+         String(product.harga_beli ?? "").includes(lowerQuery) ||
+         String(product.harga_jual ?? "").includes(lowerQuery) ||
          String(product.stok).includes(lowerQuery)
       );
    });
@@ -190,16 +203,29 @@ export default function ProdukPage() {
                   />
                </div>
                <div className="produk-form__group">
-                  <label className="produk-form__label" htmlFor="product-price">
-                     Harga
+                  <label className="produk-form__label" htmlFor="product-buy-price">
+                     Harga Beli
                   </label>
                   <input
-                     id="product-price"
+                     id="product-buy-price"
                      className="produk-form__input"
-                     placeholder="Harga"
+                     placeholder="Harga beli"
                      type="number"
-                     value={newHarga}
-                     onChange={(e) => setNewHarga(e.target.value)}
+                     value={newHargaBeli}
+                     onChange={(e) => setNewHargaBeli(e.target.value)}
+                  />
+               </div>
+               <div className="produk-form__group">
+                  <label className="produk-form__label" htmlFor="product-sell-price">
+                     Harga Jual
+                  </label>
+                  <input
+                     id="product-sell-price"
+                     className="produk-form__input"
+                     placeholder="Harga jual"
+                     type="number"
+                     value={newHargaJual}
+                     onChange={(e) => setNewHargaJual(e.target.value)}
                   />
                </div>
                <div className="produk-form__group">
@@ -259,7 +285,7 @@ export default function ProdukPage() {
                      id="produk-search"
                      className="produk-form__input produk-page__search-input"
                      type="search"
-                     placeholder="Cari nama, harga, atau stok"
+                     placeholder="Cari nama, harga beli, harga jual, atau stok"
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -275,7 +301,8 @@ export default function ProdukPage() {
                <thead>
                   <tr>
                      <th>Nama Produk</th>
-                     <th>Harga</th>
+                     <th>Harga Beli</th>
+                     <th>Harga Jual</th>
                      <th>Stok</th>
                      <th>Aksi</th>
                   </tr>
@@ -284,7 +311,8 @@ export default function ProdukPage() {
                   {filteredProducts.map((p) => (
                      <tr key={p.id}>
                         <td>{p.nama_produk}</td>
-                        <td className="produk-table__numeric">Rp {Number(p.harga).toLocaleString()}</td>
+                        <td className="produk-table__numeric">Rp {Number(p.harga_beli ?? 0).toLocaleString()}</td>
+                        <td className="produk-table__numeric">Rp {Number(p.harga_jual ?? 0).toLocaleString()}</td>
                         <td className="produk-table__numeric">
                            {editingId === p.id ? (
                               <input
@@ -340,7 +368,7 @@ export default function ProdukPage() {
                   ))}
                   {filteredProducts.length === 0 && !loading && (
                      <tr>
-                        <td colSpan={4} className="produk-table__empty">
+                        <td colSpan={5} className="produk-table__empty">
                            Tidak ada produk yang cocok.
                         </td>
                      </tr>

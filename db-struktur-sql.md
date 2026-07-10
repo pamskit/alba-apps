@@ -37,8 +37,10 @@ CREATE TABLE guru (
 CREATE TABLE produk (
     id SERIAL PRIMARY KEY,
     nama_produk TEXT NOT NULL,
-    harga INT NOT NULL CHECK (harga >= 0),
-    stok INT NOT NULL DEFAULT 0 CHECK (stok >= 0)
+    harga_beli INT NOT NULL DEFAULT 0 CHECK (harga_beli >= 0),
+    harga_jual INT NOT NULL DEFAULT 0 CHECK (harga_jual >= 0),
+    stok INT NOT NULL DEFAULT 0 CHECK (stok >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 3. MEMBUAT TABEL TRANSAKSI
@@ -135,5 +137,5 @@ INSERT INTO siswa (nis, nama_siswa, kelas, password, total_hutang, saldo) VALUES
 INSERT INTO guru (nip, nama_guru, bidang_studi, password, total_hutang, saldo) VALUES
 (20000, 'Dr. Ahmad Suryanto', 'Matematika', 'guru123', 0, 200000);
 
-INSERT INTO produk (nama_produk, harga, stok) VALUES
-('Roti Coklat', 5000, 30);
+INSERT INTO produk (nama_produk, harga_beli, harga_jual, stok) VALUES
+('Roti Coklat', 4000, 5000, 30);

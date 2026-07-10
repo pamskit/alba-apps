@@ -25,7 +25,7 @@ export default function KasirPage() {
 
    async function fetchAll() {
       const [{ data: produk }, { data: listSiswa }, { data: listGuru }] = await Promise.all([
-         supabase.from("produk").select("id,nama_produk,harga,stok"),
+         supabase.from("produk").select("*"),
          supabase.from("siswa").select("nis,nama_siswa,kelas,total_hutang,saldo"),
          supabase.from("guru").select("nip,nama_guru,bidang_studi,total_hutang,saldo"),
       ]);
@@ -42,7 +42,7 @@ export default function KasirPage() {
          if (existing) {
             return prev.map((i) => (i.id === p.id ? { ...i, qty: Math.min(i.qty + 1, p.stok) } : i));
          }
-         return [...prev, { id: p.id, nama: p.nama_produk, harga: p.harga, qty: 1, stok: p.stok }];
+         return [...prev, { id: p.id, nama: p.nama_produk, harga: p.harga_jual ?? p.harga_beli ?? 0, qty: 1, stok: p.stok }];
       });
    }
 
@@ -224,7 +224,7 @@ export default function KasirPage() {
                                  {p.stok > 0 ? `Stok ${p.stok}` : "Habis"}
                               </div>
                            </div>
-                           <div className="product-card__price">Rp {p.harga.toLocaleString()}</div>
+                           <div className="product-card__price">Rp {(p.harga_jual ?? p.harga_beli ?? 0).toLocaleString()}</div>
                         </div>
                      ))
                   )}
