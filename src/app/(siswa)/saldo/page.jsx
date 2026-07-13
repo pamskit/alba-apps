@@ -9,12 +9,6 @@ export default function SiswaSaldoPage() {
       historyItems,
       loading,
       errorMessage,
-      paymentAmount,
-      setPaymentAmount,
-      processingPayment,
-      paymentSuccess,
-      paymentError,
-      handlePaymentHutang,
       formatHistoryDescription,
    } = useSaldo({ role: "siswa" });
 
@@ -48,37 +42,6 @@ export default function SiswaSaldoPage() {
                   )}
                </div>
 
-               {student.total_hutang > 0 && (
-                  <div className="payment-section">
-                     <div className="payment-section__title">Bayar Hutang Dengan Saldo</div>
-                     {paymentSuccess && <div className="message message--success">{paymentSuccess}</div>}
-                     {paymentError && <div className="message message--error">{paymentError}</div>}
-                     <div className="payment-form">
-                        <div className="form-group">
-                           <label htmlFor="payment-amount">Nominal Pembayaran</label>
-                           <input
-                              id="payment-amount"
-                              type="number"
-                              placeholder="Masukkan nominal..."
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(e.target.value)}
-                              min="1"
-                              max={Math.min(student.saldo, student.total_hutang)}
-                           />
-                           <small>
-                              Maksimal: Rp {Number(Math.min(student.saldo, student.total_hutang)).toLocaleString("id-ID")}
-                           </small>
-                        </div>
-                        <button
-                           className="btn btn--primary"
-                           onClick={handlePaymentHutang}
-                           disabled={processingPayment || student.saldo === 0}
-                        >
-                           {processingPayment ? "Memproses..." : "Bayar Sekarang"}
-                        </button>
-                     </div>
-                  </div>
-               )}
 
                <div className="history-section">
                   <div className="history-section__title">Riwayat Saldo</div>

@@ -9,11 +9,12 @@ export async function POST(req) {
     const {
       userType, // "siswa" atau "guru"
       userId, // nis atau nip
-      amount, // nominal pembayaran
+      amount,
       paymentMethod, // "Admin" untuk pembayaran oleh admin, "Saldo" untuk pembayaran dari saldo sendiri
     } = await req.json();
 
-    if (!userType || !userId || !amount || amount <= 0 || !paymentMethod) {
+    const amountValue = Number(amount);
+    if (!userType || !userId || !Number.isFinite(amountValue) || amountValue <= 0 || !paymentMethod) {
       return jsonError("Data tidak lengkap atau tidak valid", 400);
     }
 
@@ -25,7 +26,7 @@ export async function POST(req) {
     const { data: userData, error: userError } = await supabase
       .from(tableUser)
       .select("total_hutang,saldo")
-      .eq(userId_column, userId)
+      .eq(userId_column, Number(userId))
       .single();
 
     if (userError || !userData) {
@@ -33,24 +34,24 @@ export async function POST(req) {
     }
 
     // Check if amount exceeds hutang
-    if (amount > userData.total_hutang) {
+    if (amountValue > userData.total_hutang) {
       return jsonError("Nominal pembayaran melebihi total hutang", 400);
     }
 
     // Check if user has enough balance for "Saldo" method
     if (paymentMethod === "Saldo") {
-      if (userData.saldo < amount) {
+      if (Number(userData.saldo ?? 0) < amountValue) {
         return jsonError("Saldo tidak cukup untuk pembayaran hutang", 400);
       }
     }
 
     // Update hutang
-    const newHutang = userData.total_hutang - amount;
+    const newHutang = Number(userData.total_hutang ?? 0) - amountValue;
     let updateObj = { total_hutang: newHutang };
 
     // If payment method is "Saldo", also deduct from saldo
     if (paymentMethod === "Saldo") {
-      updateObj.saldo = userData.saldo - amount;
+      updateObj.saldo = Number(userData.saldo ?? 0) - amountValue;
     }
 
     const { error: updateError } = await supabase
@@ -68,28 +69,29 @@ export async function POST(req) {
     await supabase.from("transaksi").insert({
       id: trxId,
       customer_type: userType,
-      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: Number(userId),
       transaction_type: "hutang_payment",
       payment_method: paymentMethod,
-      payment_status: "Lunas",
-      amount_total: amount,
-      amount_paid: amount,
+      payment_status: newHutang === 0 ? "Lunas" : "Belum Lunas",
+      amount_total: amountValue,
+      amount_paid: amountValue,
       amount_due: 0,
       note: "Pembayaran hutang",
     });
 
-    // Log to unified saldo_log
-    await supabase.from("saldo_log").insert({
-      customer_type: userType,
-      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
-      transaksi_id: trxId,
-      log_type: "Hutang_Payment",
-      amount: amount,
-      balance_before: userData.saldo,
-      balance_after: updateObj.saldo ?? userData.saldo,
-      payment_method: paymentMethod,
-      note: `Pembayaran hutang - ${paymentMethod === "Saldo" ? "dari saldo" : "oleh admin"}`,
-    });
+    if (paymentMethod === "Saldo") {
+      await supabase.from("saldo_log").insert({
+        customer_type: userType,
+        [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: Number(userId),
+        transaksi_id: trxId,
+        log_type: "Hutang_Payment",
+        amount: -amountValue,
+        balance_before: Number(userData.saldo ?? 0),
+        balance_after: updateObj.saldo,
+        payment_method: paymentMethod,
+        note: "Pelunasan hutang dari saldo",
+      });
+    }
 
     return jsonSuccess({
       newHutang: newHutang,

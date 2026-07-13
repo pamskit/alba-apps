@@ -8,10 +8,6 @@ export function useSaldo({ role, initialFetch = true } = {}) {
   const [historyItems, setHistoryItems] = useState([]);
   const [loading, setLoading] = useState(initialFetch);
   const [errorMessage, setErrorMessage] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState("");
-  const [paymentError, setPaymentError] = useState("");
 
   const config = saldoRoleConfig[role];
   const supabase = createClient();
@@ -68,7 +64,9 @@ export function useSaldo({ role, initialFetch = true } = {}) {
       if (legacyResult?.error) throw legacyResult.error;
 
       const mergedHistory = [
-        ...(historyData ?? []).map((row) => ({ ...row, __historySource: "saldo_log" })),
+        ...(historyData ?? [])
+          .filter((row) => !(row.log_type === "Hutang_Payment" && row.payment_method === "Hutang"))
+          .map((row) => ({ ...row, __historySource: "saldo_log" })),
         ...(legacyResult?.data ?? []).map((row) => ({ ...row, __historySource: "legacy" })),
       ];
 
@@ -102,67 +100,6 @@ export function useSaldo({ role, initialFetch = true } = {}) {
     }
   }, [config, role, supabase]);
 
-  const handlePaymentHutang = useCallback(async () => {
-    setPaymentError("");
-    setPaymentSuccess("");
-
-    if (!profile) return;
-    const amount = Number(paymentAmount);
-    if (!amount || amount <= 0) {
-      setPaymentError("Masukkan nominal pembayaran yang valid");
-      return;
-    }
-
-    if (amount > profile.total_hutang) {
-      setPaymentError("Nominal pembayaran melebihi total hutang");
-      return;
-    }
-
-    if (amount > profile.saldo) {
-      setPaymentError("Saldo tidak cukup untuk pembayaran");
-      return;
-    }
-
-    setProcessingPayment(true);
-
-    try {
-      const response = await fetch("/api/payment-hutang", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userType: role,
-          userId: profile[config.profileIdField],
-          amount,
-          paymentMethod: "Saldo",
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Gagal melakukan pembayaran");
-      }
-
-      setPaymentSuccess("Pembayaran hutang berhasil!");
-      setPaymentAmount("");
-      setProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              saldo: result.newSaldo,
-              total_hutang: result.newHutang,
-            }
-          : prev
-      );
-
-      await fetchSaldo();
-    } catch (error) {
-      console.error(error);
-      setPaymentError(error.message || "Gagal melakukan pembayaran");
-    } finally {
-      setProcessingPayment(false);
-    }
-  }, [config.profileIdField, fetchSaldo, paymentAmount, profile, role]);
-
   useEffect(() => {
     if (!initialFetch) return;
 
@@ -178,12 +115,6 @@ export function useSaldo({ role, initialFetch = true } = {}) {
     historyItems,
     loading,
     errorMessage,
-    paymentAmount,
-    setPaymentAmount,
-    processingPayment,
-    paymentSuccess,
-    paymentError,
-    handlePaymentHutang,
     refresh: fetchSaldo,
     config,
     formatHistoryDescription,

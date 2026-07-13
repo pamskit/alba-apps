@@ -201,21 +201,6 @@ export default function OrderSiswaPage() {
                   .eq("id", order.id)
             );
 
-            // Log hutang confirmation in saldo_log
-            operations.push(
-               supabase.from("saldo_log").insert({
-                  customer_type: "siswa",
-                  nis_siswa: order.siswa.nis,
-                  transaksi_id: order.id,
-                  log_type: "Hutang_Payment",
-                  amount: totalHarga,
-                  balance_before: currentHutang,
-                  balance_after: newHutang,
-                  payment_method: "Hutang",
-                  note: `Order confirmed: ${order.id}`,
-               })
-            );
-
             const results = await Promise.all(operations);
             for (const result of results) {
                if (result.error) throw result.error;

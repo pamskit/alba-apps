@@ -77,49 +77,30 @@ export default function BukuHutangPage() {
 
       setLoading(true);
       try {
-         const newTotal = Math.max(0, remaining);
-         const updateTarget = selectedEntry.type === "siswa" ? "siswa" : "guru";
-         const updateKey = selectedEntry.type === "siswa" ? "nis" : "nip";
-         const updateValue = selectedEntry.type === "siswa" ? selectedEntry.nis : selectedEntry.nip;
+         const response = await fetch("/api/payment-hutang", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+               userType: selectedEntry.type,
+               userId: selectedEntry.type === "siswa" ? selectedEntry.nis : selectedEntry.nip,
+               amount,
+               paymentMethod: paymentMethod === "Tunai" ? "Tunai" : paymentMethod,
+            }),
+         });
 
-         const { error: updateError } = await supabase
-            .from(updateTarget)
-            .update({ total_hutang: newTotal })
-            .eq(updateKey, updateValue);
-
-         if (updateError) throw updateError;
-
-         const trxId = `trx_${Date.now()}`;
-         const insertData = {
-            id: trxId,
-            transaction_type: "hutang_payment",
-            payment_method: "Pelunasan",
-            payment_status: amount >= Number(selectedEntry.total_hutang) ? "Lunas" : "Belum Lunas",
-            amount_total: amount,
-            amount_paid: amount,
-            amount_due: 0,
-         };
-
-         if (selectedEntry.type === "siswa") {
-            insertData.customer_type = "siswa";
-            insertData.nis_siswa = selectedEntry.nis;
-         } else {
-            insertData.customer_type = "guru";
-            insertData.nip_guru = selectedEntry.nip;
+         const result = await response.json();
+         if (!response.ok) {
+            throw new Error(result.error || "Gagal memproses pembayaran hutang");
          }
-
-         const { error: insertError } = await supabase.from("transaksi").insert(insertData);
-
-         if (insertError) throw insertError;
 
          setIsModalOpen(false);
          setSelectedEntry(null);
          setPaymentAmount("");
          await Promise.all([fetchStudents(), fetchTeachers()]);
-         toast.success("Pembayaran hutang berhasil disimpan");
+         toast.success(result.message || "Pembayaran hutang berhasil disimpan");
       } catch (error) {
          console.error(error);
-         toast.error("Gagal memproses pembayaran hutang");
+         toast.error(error.message || "Gagal memproses pembayaran hutang");
       } finally {
          setLoading(false);
       }

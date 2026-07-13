@@ -201,26 +201,18 @@ export function useHutang({ role, initialFetch = true } = {}) {
       const { error: insertError } = await supabase.from("transaksi").insert(transactionRow);
       if (insertError) throw insertError;
 
-      // Record saldo_log entry in unified saldo_log table
-      try {
-        const saldoLogRow = {
-          customer_type: config.customerType,
-          [config.topupOwnerField]: profile[config.profileKey],
-          transaksi_id: trxId,
-          log_type: "Hutang_Payment",
-          amount: amount,
-          balance_before: Number(profile.saldo ?? 0),
-          balance_after: Number(newSaldo ?? 0),
-          payment_method: "Saldo",
-          note: "Pelunasan hutang dari saldo",
-        };
-        const { error: historyError } = await supabase.from("saldo_log").insert(saldoLogRow);
-        if (historyError) {
-          console.error("Warning: Could not record saldo_log:", historyError);
-        }
-      } catch (e) {
-        console.error("saldo_log insert failed:", e);
-      }
+      const { error: logError } = await supabase.from("saldo_log").insert({
+        customer_type: config.customerType,
+        [config.transactionOwnerField]: profile[config.profileKey],
+        transaksi_id: trxId,
+        log_type: "Hutang_Payment",
+        amount: -amount,
+        balance_before: Number(profile.saldo ?? 0),
+        balance_after: newSaldo,
+        payment_method: "Saldo",
+        note: "Pelunasan hutang dari saldo",
+      });
+      if (logError) throw logError;
 
       setPaymentSuccess("Pembayaran hutang berhasil.");
       setPaymentAmount("");
