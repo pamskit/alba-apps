@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./saldo.css";
 
@@ -130,8 +130,8 @@ export default function GuruSaldoPage() {
          setErrorMessage("");
 
          try {
-            const session = getAuthSession();
-            const nipSession = session?.role === "guru" ? session.nip : null;
+            const session = getRoleSession("guru");
+            const nipSession = session?.nip ?? null;
             if (!nipSession) {
                setTeacher(null);
                setHistoryItems([]);

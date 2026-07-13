@@ -1,9 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 // POST - Top-up balance by admin
 export async function POST(req) {
@@ -14,10 +12,7 @@ export async function POST(req) {
     // metode: "Transfer", "Cash", dll
 
     if (!userType || !userId || !amount || amount <= 0) {
-      return Response.json(
-        { error: "Data tidak lengkap atau tidak valid" },
-        { status: 400 }
-      );
+      return jsonError("Data tidak lengkap atau tidak valid", 400);
     }
 
     const tableUser = userType === "siswa" ? "siswa" : "guru";
@@ -33,10 +28,7 @@ export async function POST(req) {
       .single();
 
     if (userError || !userData) {
-      return Response.json(
-        { error: "User tidak ditemukan" },
-        { status: 404 }
-      );
+      return jsonError("User tidak ditemukan", 404);
     }
 
     // Update saldo
@@ -48,10 +40,7 @@ export async function POST(req) {
 
     if (updateError) {
       console.error("Saldo update error:", updateError);
-      return Response.json(
-        { error: "Gagal update saldo" },
-        { status: 500 }
-      );
+      return jsonError("Gagal update saldo", 500);
     }
 
     // Log transaction
@@ -65,25 +54,15 @@ export async function POST(req) {
 
     if (logError) {
       console.error("Log insertion error:", logError);
-      return Response.json(
-        { error: "Gagal mencatat transaksi" },
-        { status: 500 }
-      );
+      return jsonError("Gagal mencatat transaksi", 500);
     }
 
-    return Response.json(
-      {
-        success: true,
-        newSaldo: newSaldo,
-        message: `Saldo berhasil ditambah Rp ${amount.toLocaleString("id-ID")}`,
-      },
-      { status: 200 }
-    );
+    return jsonSuccess({
+      newSaldo: newSaldo,
+      message: `Saldo berhasil ditambah Rp ${amount.toLocaleString("id-ID")}`,
+    }, 200);
   } catch (error) {
     console.error("API error:", error);
-    return Response.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

@@ -1,9 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 // POST - Payment hutang (by admin or by user using saldo)
 export async function POST(req) {
@@ -16,10 +14,7 @@ export async function POST(req) {
     } = await req.json();
 
     if (!userType || !userId || !amount || amount <= 0 || !paymentMethod) {
-      return Response.json(
-        { error: "Data tidak lengkap atau tidak valid" },
-        { status: 400 }
-      );
+      return jsonError("Data tidak lengkap atau tidak valid", 400);
     }
 
     const tableUser = userType === "siswa" ? "siswa" : "guru";
@@ -35,27 +30,18 @@ export async function POST(req) {
       .single();
 
     if (userError || !userData) {
-      return Response.json(
-        { error: "User tidak ditemukan" },
-        { status: 404 }
-      );
+      return jsonError("User tidak ditemukan", 404);
     }
 
     // Check if amount exceeds hutang
     if (amount > userData.total_hutang) {
-      return Response.json(
-        { error: "Nominal pembayaran melebihi total hutang" },
-        { status: 400 }
-      );
+      return jsonError("Nominal pembayaran melebihi total hutang", 400);
     }
 
     // Check if user has enough balance for "Saldo" method
     if (paymentMethod === "Saldo") {
       if (userData.saldo < amount) {
-        return Response.json(
-          { error: "Saldo tidak cukup untuk pembayaran hutang" },
-          { status: 400 }
-        );
+        return jsonError("Saldo tidak cukup untuk pembayaran hutang", 400);
       }
     }
 
@@ -75,10 +61,7 @@ export async function POST(req) {
 
     if (updateError) {
       console.error("Hutang update error:", updateError);
-      return Response.json(
-        { error: "Gagal update hutang" },
-        { status: 500 }
-      );
+      return jsonError("Gagal update hutang", 500);
     }
 
     // Log transaction
@@ -95,20 +78,13 @@ export async function POST(req) {
       // Don't fail if logging fails, as the transaction was already processed
     }
 
-    return Response.json(
-      {
-        success: true,
-        newHutang: newHutang,
-        newSaldo: updateObj.saldo ?? userData.saldo,
-        message: `Hutang berkurang Rp ${amount.toLocaleString("id-ID")}`,
-      },
-      { status: 200 }
-    );
+    return jsonSuccess({
+      newHutang: newHutang,
+      newSaldo: updateObj.saldo ?? userData.saldo,
+      message: `Hutang berkurang Rp ${amount.toLocaleString("id-ID")}`,
+    }, 200);
   } catch (error) {
     console.error("API error:", error);
-    return Response.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

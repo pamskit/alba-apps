@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { clearAuthSession, getAuthSession, saveAuthSession } from "@/utils/auth";
+import { clearAuthSession, getAuthSession, getRedirectRouteByRole, saveAuthSession } from "@/utils/auth";
 
 function UnifiedLoginContent() {
    const router = useRouter();
@@ -15,23 +15,9 @@ function UnifiedLoginContent() {
       const session = getAuthSession();
       if (!session) return;
 
-      if (session.role === "admin") {
-         router.replace("/admin");
-         return;
-      }
-
-      if (session.role === "pengurus") {
-         router.replace("/pengurus/laporan");
-         return;
-      }
-
-      if (session.role === "guru") {
-         router.replace("/guru/dashboard");
-         return;
-      }
-
-      if (session.role === "siswa") {
-         router.replace("/dashboard");
+      const redirectPath = getRedirectRouteByRole(session.role);
+      if (redirectPath) {
+         router.replace(redirectPath);
          return;
       }
 
@@ -56,24 +42,10 @@ function UnifiedLoginContent() {
          }
 
          saveAuthSession(result.session);
+         const redirectPath = getRedirectRouteByRole(result.session.role);
 
-         if (result.session.role === "admin") {
-            router.replace("/admin");
-            return;
-         }
-
-         if (result.session.role === "pengurus") {
-            router.replace("/pengurus/laporan");
-            return;
-         }
-
-         if (result.session.role === "guru") {
-            router.replace("/guru/dashboard");
-            return;
-         }
-
-         if (result.session.role === "siswa") {
-            router.replace("/dashboard");
+         if (redirectPath) {
+            router.replace(redirectPath);
             return;
          }
 

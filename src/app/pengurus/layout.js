@@ -1,62 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthSession, clearAuthSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import "./pengurus.css";
 
 export default function PengurusLayout({ children }) {
-  const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
-  const [isPengurus, setIsPengurus] = useState(false);
+  const { loading, handleLogout } = useRequireAuth("pengurus");
 
-  async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      clearAuthSession();
-      router.replace("/");
-    }
-  }
-
-  useEffect(() => {
-    const session = getAuthSession();
-
-    if (!session) {
-      clearAuthSession();
-      router.replace("/");
-      return;
-    }
-
-    if (session.role === "pengurus") {
-      setIsPengurus(true);
-      setIsReady(true);
-      return;
-    }
-
-    if (session.role === "admin") {
-      router.replace("/admin");
-      return;
-    }
-
-    if (session.role === "siswa") {
-      router.replace("/dashboard");
-      return;
-    }
-
-    if (session.role === "guru") {
-      router.replace("/guru/dashboard");
-      return;
-    }
-
-    clearAuthSession();
-    router.replace("/");
-  }, [router]);
-
-  if (!isReady) {
+  if (loading) {
     return <Loading message="Memeriksa otentikasi pengurus..." size="large" />;
   }
 

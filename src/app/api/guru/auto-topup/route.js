@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
 import { getSessionFromCookieHeader } from "@/utils/session";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 export async function POST(req) {
   try {
@@ -12,10 +10,7 @@ export async function POST(req) {
     const session = getSessionFromCookieHeader(cookieHeader);
 
     if (!session || session.role !== "guru" || !session.nip) {
-      return Response.json(
-        { error: "Otentikasi guru diperlukan" },
-        { status: 401 }
-      );
+      return jsonError("Otentikasi guru diperlukan", 401);
     }
 
     const nip = session.nip;
@@ -26,10 +21,7 @@ export async function POST(req) {
       .maybeSingle();
 
     if (guruError || !guruData) {
-      return Response.json(
-        { error: "Guru tidak ditemukan" },
-        { status: 404 }
-      );
+      return jsonError("Guru tidak ditemukan", 404);
     }
 
     const now = new Date();
@@ -48,17 +40,11 @@ export async function POST(req) {
 
     if (historyError) {
       console.error("History query error:", historyError);
-      return Response.json(
-        { error: "Gagal memeriksa bonus bulanan" },
-        { status: 500 }
-      );
+      return jsonError("Gagal memeriksa bonus bulanan", 500);
     }
 
     if (existingBonus && existingBonus.length > 0) {
-      return Response.json(
-        { success: false, message: "Bonus bulan ini sudah diterapkan." },
-        { status: 200 }
-      );
+      return jsonSuccess({ success: false, message: "Bonus bulan ini sudah diterapkan." }, 200);
     }
 
     const amount = 50000;
@@ -71,10 +57,7 @@ export async function POST(req) {
 
     if (updateError) {
       console.error("Saldo update error:", updateError);
-      return Response.json(
-        { error: "Gagal menambahkan saldo guru" },
-        { status: 500 }
-      );
+      return jsonError("Gagal menambahkan saldo guru", 500);
     }
 
     const { error: logError } = await supabase.from("topup_saldo_guru").insert({
@@ -89,19 +72,12 @@ export async function POST(req) {
       console.error("Log insertion error:", logError);
     }
 
-    return Response.json(
-      {
-        success: true,
-        newSaldo,
-        message: "Saldo guru berhasil ditambahkan otomatis sebesar Rp 50.000.",
-      },
-      { status: 200 }
-    );
+    return jsonSuccess({
+      newSaldo,
+      message: "Saldo guru berhasil ditambahkan otomatis sebesar Rp 50.000.",
+    }, 200);
   } catch (error) {
     console.error("Auto-topup API error:", error);
-    return Response.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

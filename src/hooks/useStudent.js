@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 
 const supabase = createClient();
 
@@ -15,8 +15,8 @@ export function useStudent({ initialFetch = true } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const session = getAuthSession();
-      const nisSession = session?.role === "siswa" ? session.nis : null;
+      const session = getRoleSession("siswa");
+      const nisSession = session?.nis ?? null;
       if (!nisSession) {
         setStudent(null);
         setActiveNis(null);

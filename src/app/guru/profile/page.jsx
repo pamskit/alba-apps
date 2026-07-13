@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./settings.css";
 
@@ -19,15 +19,11 @@ export default function GuruProfilePage() {
    });
    const [message, setMessage] = useState({ type: "", text: "" });
 
-   useEffect(() => {
-      fetchTeacher();
-   }, []);
-
    async function fetchTeacher() {
       setLoading(true);
       try {
-         const session = getAuthSession();
-         const nipSession = session?.role === "guru" ? session.nip : null;
+         const session = getRoleSession("guru");
+         const nipSession = session?.nip ?? null;
 
          if (!nipSession) {
             setTeacher(null);
@@ -49,6 +45,14 @@ export default function GuruProfilePage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      async function loadTeacher() {
+         await fetchTeacher();
+      }
+
+      void loadTeacher();
+   }, []);
 
    function handleInputChange(event) {
       const { name, value } = event.target;

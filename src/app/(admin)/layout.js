@@ -1,48 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthSession, clearAuthSession } from "@/utils/auth";
 import AdminSidebar from "./AdminSidebar";
 import Loading from "@/components/Loading";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function AdminLayout({ children }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-
-  async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      clearAuthSession();
-      router.replace("/");
-    }
-  }
-
-  useEffect(() => {
-    const session = getAuthSession();
-
-    if (!session) {
-      clearAuthSession();
-      router.replace("/");
-      return;
-    }
-
-    if (session.role === "admin") {
-      setLoading(false);
-      return;
-    }
-
-    if (session.role === "siswa") {
-      router.replace("/dashboard");
-      return;
-    }
-
-    clearAuthSession();
-    router.replace("/");
-  }, [router]);
+  const { loading, handleLogout } = useRequireAuth("admin");
 
   if (loading) {
     return <Loading message="Memeriksa otentikasi admin..." size="large" />;
@@ -62,5 +25,5 @@ export default function AdminLayout({ children }) {
       </div>
     </div>
   );
-} 
+}
 

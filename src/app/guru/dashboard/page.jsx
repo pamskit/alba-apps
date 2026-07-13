@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./dashboard.css";
 
@@ -15,15 +15,11 @@ export default function DashboardGuruPage() {
    const [orders, setOrders] = useState([]);
    const [loading, setLoading] = useState(true);
 
-   useEffect(() => {
-      fetchData();
-   }, []);
-
    async function fetchData() {
       setLoading(true);
       try {
-         const session = getAuthSession();
-         const nipSession = session?.role === "guru" ? session.nip : null;
+         const session = getRoleSession("guru");
+         const nipSession = session?.nip ?? null;
          if (!nipSession) {
             setTeacher(null);
             setActiveNip(null);
@@ -71,6 +67,14 @@ export default function DashboardGuruPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      async function loadDashboard() {
+         await fetchData();
+      }
+
+      void loadDashboard();
+   }, []);
 
    const debtText = useMemo(() => {
       if (!teacher) return "";

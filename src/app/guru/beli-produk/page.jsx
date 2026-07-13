@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./beli-produk.css";
 
@@ -25,8 +25,8 @@ export default function BeliProdukGuruPage() {
          setLoading(true);
          setErrorMessage("");
          try {
-            const session = getAuthSession();
-            const nipSession = session?.role === "guru" ? session.nip : null;
+            const session = getRoleSession("guru");
+            const nipSession = session?.nip ?? null;
             if (!nipSession) {
                setTeacher(null);
                setProducts([]);
@@ -127,8 +127,8 @@ export default function BeliProdukGuruPage() {
       setErrorMessage("");
 
       try {
-         const session = getAuthSession();
-         const nipSession = session?.role === "guru" ? session.nip : null;
+         const session = getRoleSession("guru");
+         const nipSession = session?.nip ?? null;
          if (!nipSession) throw new Error("Session tidak valid");
 
          if (paymentMethod === "Saldo") {

@@ -45,6 +45,11 @@ function getSessionCookieValue(cookieHeader) {
   return match.slice(SESSION_COOKIE_NAME.length + 1);
 }
 
+export function getSessionFromCookieString(cookieString) {
+  const token = getSessionCookieValue(cookieString);
+  return parseSessionToken(token);
+}
+
 export function getSessionFromCookieHeader(cookieHeader) {
   const token = getSessionCookieValue(cookieHeader);
   return parseSessionToken(token);

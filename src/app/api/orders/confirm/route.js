@@ -1,9 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 // POST - Confirm/Approve order by admin
 export async function POST(req) {
@@ -11,10 +9,7 @@ export async function POST(req) {
     const { orderId, userType } = await req.json(); // userType: "siswa" atau "guru"
 
     if (!orderId || !userType) {
-      return Response.json(
-        { error: "Data tidak lengkap" },
-        { status: 400 }
-      );
+      return jsonError("Data tidak lengkap", 400);
     }
 
     const orderTable = userType === "siswa" ? "order_siswa" : "order_guru";
@@ -33,17 +28,11 @@ export async function POST(req) {
       .single();
 
     if (orderError || !order) {
-      return Response.json(
-        { error: "Order tidak ditemukan" },
-        { status: 404 }
-      );
+      return jsonError("Order tidak ditemukan", 404);
     }
 
     if (order.status_order === "Dikonfirmasi") {
-      return Response.json(
-        { error: "Order sudah dikonfirmasi sebelumnya" },
-        { status: 400 }
-      );
+      return jsonError("Order sudah dikonfirmasi sebelumnya", 400);
     }
 
     // Get order details
@@ -53,10 +42,7 @@ export async function POST(req) {
       .eq("order_id", orderId);
 
     if (detailError) {
-      return Response.json(
-        { error: "Gagal mengambil detail order" },
-        { status: 500 }
-      );
+      return jsonError("Gagal mengambil detail order", 500);
     }
 
     // Update stock for each product
@@ -115,24 +101,12 @@ export async function POST(req) {
 
     if (updateError) {
       console.error("Order update error:", updateError);
-      return Response.json(
-        { error: "Gagal update status order" },
-        { status: 500 }
-      );
+      return jsonError("Gagal update status order", 500);
     }
 
-    return Response.json(
-      {
-        success: true,
-        message: "Order berhasil dikonfirmasi",
-      },
-      { status: 200 }
-    );
+    return jsonSuccess({ message: "Order berhasil dikonfirmasi" }, 200);
   } catch (error) {
     console.error("API error:", error);
-    return Response.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

@@ -1,48 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthSession, clearAuthSession } from "@/utils/auth";
 import SiswaSidebar from "./SiswaSidebar";
 import Loading from "@/components/Loading";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function SiswaLayout({ children }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-
-  async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      clearAuthSession();
-      router.replace("/");
-    }
-  }
-
-  useEffect(() => {
-    const session = getAuthSession();
-
-    if (!session) {
-      clearAuthSession();
-      router.replace("/");
-      return;
-    }
-
-    if (session.role === "siswa") {
-      setLoading(false);
-      return;
-    }
-
-    if (session.role === "admin") {
-      router.replace("/kasir");
-      return;
-    }
-
-    clearAuthSession();
-    router.replace("/");
-  }, [router]);
+  const { loading, handleLogout } = useRequireAuth("siswa");
 
   if (loading) {
     return <Loading message="Memeriksa otentikasi siswa..." size="large" />;
@@ -62,4 +25,4 @@ export default function SiswaLayout({ children }) {
       </div>
     </div>
   );
-} 
+}

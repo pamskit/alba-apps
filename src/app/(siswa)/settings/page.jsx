@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./settings.css";
 
@@ -19,22 +19,22 @@ export default function SettingsPage() {
    });
    const [message, setMessage] = useState({ type: "", text: "" });
 
-   useEffect(() => {
-      fetchStudent();
-   }, []);
-
    async function fetchStudent() {
       setLoading(true);
       try {
-         const session = getAuthSession();
-         const nisSession = session?.role === "siswa" ? session.nis : null;
+         const session = getRoleSession("siswa");
+         const nisSession = session?.nis ?? null;
 
          if (!nisSession) {
             setStudent(null);
             return;
          }
 
-         const { data, error } = await supabase.from("siswa").select("nis,nama_siswa,kelas,saldo,total_hutang,password").eq("nis", nisSession).maybeSingle();
+         const { data, error } = await supabase
+            .from("siswa")
+            .select("nis,nama_siswa,kelas,saldo,total_hutang,password")
+            .eq("nis", nisSession)
+            .maybeSingle();
 
          if (error) throw error;
          setStudent(data ?? null);
@@ -45,6 +45,14 @@ export default function SettingsPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      async function loadStudent() {
+         await fetchStudent();
+      }
+
+      void loadStudent();
+   }, []);
 
    function handleInputChange(event) {
       const { name, value } = event.target;

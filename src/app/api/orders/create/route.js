@@ -1,9 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 // POST - Create order (self-service: siswa atau guru membeli dengan saldo/hutang)
 export async function POST(req) {
@@ -22,10 +20,7 @@ export async function POST(req) {
       items.length === 0 ||
       !metode_pembayaran
     ) {
-      return Response.json(
-        { error: "Data tidak lengkap" },
-        { status: 400 }
-      );
+      return jsonError("Data tidak lengkap", 400);
     }
 
     const tableUser = userType === "siswa" ? "siswa" : "guru";
@@ -42,10 +37,7 @@ export async function POST(req) {
       .single();
 
     if (userError || !userData) {
-      return Response.json(
-        { error: "User tidak ditemukan" },
-        { status: 404 }
-      );
+      return jsonError("User tidak ditemukan", 404);
     }
 
     // Get product data and calculate total
@@ -60,17 +52,11 @@ export async function POST(req) {
         .single();
 
       if (prodError || !produk) {
-        return Response.json(
-          { error: `Produk ${item.produk_id} tidak ditemukan` },
-          { status: 404 }
-        );
+        return jsonError(`Produk ${item.produk_id} tidak ditemukan`, 404);
       }
 
       if (produk.stok < item.jumlah) {
-        return Response.json(
-          { error: `Stok ${produk.nama_produk} tidak cukup` },
-          { status: 400 }
-        );
+        return jsonError(`Stok ${produk.nama_produk} tidak cukup`, 400);
       }
 
       const hargaJual = Number(produk.harga_jual ?? produk.harga_beli ?? 0);
@@ -85,10 +71,7 @@ export async function POST(req) {
     // Check if user has enough balance for "Saldo" method
     if (metode_pembayaran === "Saldo") {
       if (userData.saldo < totalHarga) {
-        return Response.json(
-          { error: "Saldo tidak cukup" },
-          { status: 400 }
-        );
+        return jsonError("Saldo tidak cukup", 400);
       }
     }
 
@@ -105,10 +88,7 @@ export async function POST(req) {
 
     if (orderError) {
       console.error("Order creation error:", orderError);
-      return Response.json(
-        { error: "Gagal membuat order" },
-        { status: 500 }
-      );
+      return jsonError("Gagal membuat order", 500);
     }
 
     // Insert order details
@@ -123,10 +103,7 @@ export async function POST(req) {
 
     if (detailError) {
       console.error("Detail insertion error:", detailError);
-      return Response.json(
-        { error: "Gagal menambah detail order" },
-        { status: 500 }
-      );
+      return jsonError("Gagal menambah detail order", 500);
     }
 
     // Deduct balance if payment method is "Saldo"
@@ -139,10 +116,7 @@ export async function POST(req) {
 
       if (updateError) {
         console.error("Balance update error:", updateError);
-        return Response.json(
-          { error: "Gagal update saldo" },
-          { status: 500 }
-        );
+        return jsonError("Gagal update saldo", 500);
       }
 
       // Log saldo transaction
@@ -159,20 +133,13 @@ export async function POST(req) {
       // We don't update total_hutang yet, just log the pending order
     }
 
-    return Response.json(
-      {
-        success: true,
-        orderId: orderId,
-        totalHarga: totalHarga,
-        message: "Order berhasil dibuat, menunggu konfirmasi admin",
-      },
-      { status: 201 }
-    );
+    return jsonSuccess({
+      orderId: orderId,
+      totalHarga: totalHarga,
+      message: "Order berhasil dibuat, menunggu konfirmasi admin",
+    }, 201);
   } catch (error) {
     console.error("API error:", error);
-    return Response.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

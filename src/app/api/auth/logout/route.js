@@ -1,11 +1,8 @@
 import { clearSessionCookie } from "@/utils/session";
+import { jsonSuccess } from "@/utils/api";
 
 export async function POST() {
-  return new Response(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Set-Cookie": clearSessionCookie(),
-    },
+  return jsonSuccess({}, 200, {
+    "Set-Cookie": clearSessionCookie(),
   });
 }

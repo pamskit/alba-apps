@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./saldo.css";
 
@@ -130,8 +130,8 @@ export default function SiswaSaldoPage() {
          setErrorMessage("");
 
          try {
-            const session = getAuthSession();
-            const nisSession = session?.role === "siswa" ? session.nis : null;
+            const session = getRoleSession("siswa");
+            const nisSession = session?.nis ?? null;
             if (!nisSession) {
                setStudent(null);
                setHistoryItems([]);

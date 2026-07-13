@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 import "./hutang.css";
 
@@ -22,8 +22,8 @@ export default function SiswaHutangPage() {
       setErrorMessage("");
 
       try {
-         const session = getAuthSession();
-         const nisSession = session?.role === "siswa" ? session.nis : null;
+         const session = getRoleSession("siswa");
+         const nisSession = session?.nis ?? null;
          if (!nisSession) {
             setStudent(null);
             setHutangHistory([]);
@@ -79,7 +79,11 @@ export default function SiswaHutangPage() {
    }
 
    useEffect(() => {
-      void fetchData();
+      async function loadHutangData() {
+         await fetchData();
+      }
+
+      void loadHutangData();
    }, []);
 
    function getHutangTransactionLabel(item) {

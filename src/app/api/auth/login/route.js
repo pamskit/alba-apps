@@ -1,11 +1,9 @@
 import { createHash } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/utils/supabase-server";
 import { createSessionCookie } from "@/utils/session";
+import { jsonError, jsonSuccess } from "@/utils/api";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createServerClient();
 
 function getFirstConfiguredValue(keys) {
   for (const key of keys) {
@@ -86,7 +84,7 @@ export async function POST(req) {
     const { identifier, password } = await req.json();
 
     if (!identifier || !password) {
-      return Response.json({ error: "Identifier dan password diperlukan" }, { status: 400 });
+      return jsonError("Identifier dan password diperlukan", 400);
     }
 
     const normalizedIdentifier = String(identifier).trim();
@@ -96,44 +94,36 @@ export async function POST(req) {
 
     if (normalizedIdentifier.toLowerCase() === adminUsername.toLowerCase()) {
       if (!adminPassword && !adminPasswordHash) {
-        return Response.json({ error: "Admin belum dikonfigurasi. Setel ADMIN_USERNAME dan ADMIN_PASSWORD atau ADMIN_PASSWORD_HASH di environment server." }, { status: 503 });
+        return jsonError("Admin belum dikonfigurasi. Setel ADMIN_USERNAME dan ADMIN_PASSWORD atau ADMIN_PASSWORD_HASH di environment server.", 503);
       }
 
       if (!verifyPassword(password, adminPassword, adminPasswordHash)) {
-        return Response.json({ error: "Username atau password admin salah." }, { status: 401 });
+        return jsonError("Username atau password admin salah.", 401);
       }
 
       const session = { role: "admin", username: adminUsername };
-      return new Response(JSON.stringify({ success: true, session }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": createSessionCookie(session),
-        },
+      return jsonSuccess({ session }, 200, {
+        "Set-Cookie": createSessionCookie(session),
       });
     }
 
     if (normalizedIdentifier.toLowerCase() === pengurusUsername.toLowerCase()) {
       if (!pengurusPassword && !pengurusPasswordHash) {
-        return Response.json({ error: "Pengurus belum dikonfigurasi. Setel PENGURUS_USERNAME dan PENGURUS_PASSWORD atau PENGURUS_PASSWORD_HASH di environment server." }, { status: 503 });
+        return jsonError("Pengurus belum dikonfigurasi. Setel PENGURUS_USERNAME dan PENGURUS_PASSWORD atau PENGURUS_PASSWORD_HASH di environment server.", 503);
       }
 
       if (!verifyPassword(password, pengurusPassword, pengurusPasswordHash)) {
-        return Response.json({ error: "Username atau password pengurus salah." }, { status: 401 });
+        return jsonError("Username atau password pengurus salah.", 401);
       }
 
       const session = { role: "pengurus", username: pengurusUsername };
-      return new Response(JSON.stringify({ success: true, session }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": createSessionCookie(session),
-        },
+      return jsonSuccess({ session }, 200, {
+        "Set-Cookie": createSessionCookie(session),
       });
     }
 
     if (!/^\d+$/.test(normalizedIdentifier)) {
-      return Response.json({ error: "Masukkan NIP guru atau NIS siswa yang valid." }, { status: 400 });
+      return jsonError("Masukkan NIP guru atau NIS siswa yang valid.", 400);
     }
 
     const numericId = Number(normalizedIdentifier);
@@ -146,12 +136,12 @@ export async function POST(req) {
 
     if (guruError) {
       console.error(guruError);
-      return Response.json({ error: "Gagal memeriksa akun guru." }, { status: 500 });
+      return jsonError("Gagal memeriksa akun guru.", 500);
     }
 
     if (guruData) {
       if (String(guruData.password) !== String(password)) {
-        return Response.json({ error: "Password salah." }, { status: 401 });
+        return jsonError("Password salah.", 401);
       }
 
       const session = {
@@ -161,12 +151,8 @@ export async function POST(req) {
         bidang_studi: guruData.bidang_studi,
       };
 
-      return new Response(JSON.stringify({ success: true, session }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": createSessionCookie(session),
-        },
+      return jsonSuccess({ session }, 200, {
+        "Set-Cookie": createSessionCookie(session),
       });
     }
 
@@ -178,15 +164,15 @@ export async function POST(req) {
 
     if (siswaError) {
       console.error(siswaError);
-      return Response.json({ error: "Gagal memeriksa akun siswa." }, { status: 500 });
+      return jsonError("Gagal memeriksa akun siswa.", 500);
     }
 
     if (!siswaData) {
-      return Response.json({ error: "NIP guru atau NIS siswa tidak ditemukan." }, { status: 404 });
+      return jsonError("NIP guru atau NIS siswa tidak ditemukan.", 404);
     }
 
     if (String(siswaData.password) !== String(password)) {
-      return Response.json({ error: "Password salah." }, { status: 401 });
+      return jsonError("Password salah.", 401);
     }
 
     const session = {
@@ -196,15 +182,11 @@ export async function POST(req) {
       kelas: siswaData.kelas,
     };
 
-    return new Response(JSON.stringify({ success: true, session }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Set-Cookie": createSessionCookie(session),
-      },
+    return jsonSuccess({ session }, 200, {
+      "Set-Cookie": createSessionCookie(session),
     });
   } catch (error) {
     console.error(error);
-    return Response.json({ error: "Terjadi kesalahan server" }, { status: 500 });
+    return jsonError("Terjadi kesalahan server", 500);
   }
 }

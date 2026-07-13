@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
-import { getAuthSession } from "@/utils/auth";
+import { getRoleSession } from "@/utils/auth";
 import Loading from "@/components/Loading";
 
 const supabase = createClient();
@@ -13,15 +13,11 @@ export default function DashboardSiswaPage() {
    const [transactions, setTransactions] = useState([]);
    const [loading, setLoading] = useState(true);
 
-   useEffect(() => {
-      fetchData();
-   }, []);
-
    async function fetchData() {
       setLoading(true);
       try {
-         const session = getAuthSession();
-         const nisSession = session?.role === "siswa" ? session.nis : null;
+         const session = getRoleSession("siswa");
+         const nisSession = session?.nis ?? null;
          if (!nisSession) {
             setStudent(null);
             setActiveNis(null);
@@ -60,6 +56,14 @@ export default function DashboardSiswaPage() {
          setLoading(false);
       }
    }
+
+   useEffect(() => {
+      async function loadDashboard() {
+         await fetchData();
+      }
+
+      void loadDashboard();
+   }, []);
 
    const debtText = useMemo(() => {
       if (!student) return "";
