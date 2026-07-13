@@ -121,10 +121,24 @@ export function useHutang({ role, initialFetch = true } = {}) {
           item.source === "order" ||
           item.transaction_type === "hutang_payment" ||
           item.metode_pembayaran === "Hutang"
-        )
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        );
 
-      setHistory(combined);
+      const deduped = [];
+      const seenIds = new Set();
+      const sorted = combined.sort((a, b) => {
+        if (a.id === b.id && a.source !== b.source) {
+          return a.source === "order" ? -1 : 1;
+        }
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      for (const item of sorted) {
+        if (seenIds.has(item.id)) continue;
+        seenIds.add(item.id);
+        deduped.push(item);
+      }
+
+      setHistory(deduped);
     } catch (err) {
       console.error(err);
       setError(err);
