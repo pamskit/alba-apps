@@ -44,7 +44,7 @@ export function useStudent({ initialFetch = true } = {}) {
 
       const { data: transactionData, error: transactionError } = await supabase
         .from("transaksi")
-        .select("id,metode_pembayaran,status_pembayaran,total_bayar,created_at")
+        .select("id,transaction_type,order_status,payment_method,payment_status,amount_total,amount_paid,amount_due,created_at")
         .eq("nis_siswa", activeStudent.nis)
         .order("created_at", { ascending: false });
 

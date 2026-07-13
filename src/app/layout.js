@@ -4,7 +4,9 @@ import "./(admin)/admin-layout.css";
 import "./(admin)/kasir/kasir.css";
 import "./(admin)/hutang/hutang.css";
 import "./(admin)/laporan/laporan.css";
-import "./(siswa)/dashboard/dashboard.css";
+import "@/app/shared/dashboard.css";
+import "@/app/shared/saldo.css";
+import "@/app/shared/hutang.css";
 import { Toaster } from "react-hot-toast";
 
 export const metadata = {

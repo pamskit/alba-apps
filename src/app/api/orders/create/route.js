@@ -106,7 +106,44 @@ export async function POST(req) {
       return jsonError("Gagal menambah detail order", 500);
     }
 
-    // Deduct balance if payment method is "Saldo"
+    const trxId = orderId;
+    const paymentStatus = metode_pembayaran === "Saldo" ? "Lunas" : "Belum Lunas";
+    const amountPaid = metode_pembayaran === "Saldo" ? totalHarga : 0;
+    const amountDue = metode_pembayaran === "Saldo" ? 0 : totalHarga;
+
+    const { error: trxError } = await supabase.from("transaksi").insert({
+      id: trxId,
+      customer_type: userType,
+      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+      transaction_type: "order",
+      payment_method: metode_pembayaran,
+      payment_status: paymentStatus,
+      amount_total: totalHarga,
+      amount_paid: amountPaid,
+      amount_due: amountDue,
+      note: `Order ${orderId}`,
+      order_status: "Menunggu",
+    });
+
+    if (trxError) {
+      console.error("Transaksi insertion error:", trxError);
+      return jsonError("Gagal membuat transaksi order", 500);
+    }
+
+    const detailTransactionPayload = detailData.map((item) => ({
+      transaksi_id: trxId,
+      produk_id: item.produk_id,
+      jumlah: item.jumlah,
+      harga_satuan: item.harga_satuan,
+      sub_total: item.jumlah * item.harga_satuan,
+    }));
+
+    const { error: detailTransError } = await supabase.from("detail_transaksi").insert(detailTransactionPayload);
+    if (detailTransError) {
+      console.error("Detail transaksi insertion error:", detailTransError);
+      return jsonError("Gagal menambah detail transaksi", 500);
+    }
+
     if (metode_pembayaran === "Saldo") {
       const newSaldo = userData.saldo - totalHarga;
       const { error: updateError } = await supabase
@@ -119,18 +156,17 @@ export async function POST(req) {
         return jsonError("Gagal update saldo", 500);
       }
 
-      // Log saldo transaction
-      const saldoLogTable = userType === "siswa" ? "topup_saldo" : "topup_saldo_guru";
-      await supabase.from(saldoLogTable).insert({
-        [userId_column]: userId,
-        jumlah: totalHarga,
-        metode: "Order",
-        tipe: "Order_Saldo",
-        keterangan: `Order ${orderId} - menunggu konfirmasi`,
+      await supabase.from("saldo_log").insert({
+        customer_type: userType,
+        [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+        transaksi_id: trxId,
+        log_type: "Order_Saldo",
+        amount: -totalHarga,
+        balance_before: userData.saldo,
+        balance_after: newSaldo,
+        payment_method: "Saldo",
+        note: `Order ${orderId} - menunggu konfirmasi`,
       });
-    } else if (metode_pembayaran === "Hutang") {
-      // Add to pending hutang (will be updated after admin confirmation)
-      // We don't update total_hutang yet, just log the pending order
     }
 
     return jsonSuccess({

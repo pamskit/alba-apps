@@ -1,86 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/utils/supabase";
-import { getRoleSession } from "@/utils/auth";
+import { useEffect, useMemo } from "react";
+import { useTeacher } from "@/hooks/useTeacher";
 import Loading from "@/components/Loading";
-import "./dashboard.css";
-
-const supabase = createClient();
-let hasTriggeredAutoTopup = false;
 
 export default function DashboardGuruPage() {
-   const [activeNip, setActiveNip] = useState(null);
-   const [teacher, setTeacher] = useState(null);
-   const [orders, setOrders] = useState([]);
-   const [loading, setLoading] = useState(true);
-
-   async function fetchData() {
-      setLoading(true);
-      try {
-         const session = getRoleSession("guru");
-         const nipSession = session?.nip ?? null;
-         if (!nipSession) {
-            setTeacher(null);
-            setActiveNip(null);
-            return;
-         }
-
-         if (!hasTriggeredAutoTopup) {
-            hasTriggeredAutoTopup = true;
-            await fetch("/api/guru/auto-topup", {
-               method: "POST",
-               headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({}),
-            });
-         }
-
-         const { data: guruData, error: guruError } = await supabase
-            .from("guru")
-            .select("nip,nama_guru,bidang_studi,total_hutang,saldo")
-            .eq("nip", nipSession)
-            .maybeSingle();
-
-         if (guruError) throw guruError;
-         const activeTeacher = guruData ?? null;
-         if (!activeTeacher) {
-            setTeacher(null);
-            setActiveNip(null);
-            return;
-         }
-
-         setActiveNip(activeTeacher.nip);
-         setTeacher(activeTeacher);
-
-         const { data: orderData, error: orderError } = await supabase
-            .from("order_guru")
-            .select("id,metode_pembayaran,status_order,status_pembayaran,total_harga,created_at")
-            .eq("nip_guru", activeTeacher.nip)
-            .order("created_at", { ascending: false });
-
-         if (orderError) throw orderError;
-
-         setOrders(orderData ?? []);
-      } catch (error) {
-         console.error(error);
-      } finally {
-         setLoading(false);
-      }
-   }
+   const { teacher, orders, transactions, loading, refresh } = useTeacher({ initialFetch: false });
 
    useEffect(() => {
-      async function loadDashboard() {
-         await fetchData();
-      }
-
-      void loadDashboard();
-   }, []);
+      void refresh();
+   }, [refresh]);
 
    const debtText = useMemo(() => {
       if (!teacher) return "";
-      return teacher.total_hutang > 0
-         ? `Rp ${Number(teacher.total_hutang).toLocaleString()}`
-         : "Rp 0";
+      return teacher.total_hutang > 0 ? `Rp ${Number(teacher.total_hutang).toLocaleString()}` : "Rp 0";
    }, [teacher]);
 
    const saldoText = useMemo(() => {
@@ -88,8 +21,14 @@ export default function DashboardGuruPage() {
       return `Rp ${Number(teacher.saldo ?? 0).toLocaleString()}`;
    }, [teacher]);
 
+   const transactionTypeLabel = (trx) => {
+      if (trx.transaction_type === "hutang_payment") return "Pelunasan Hutang";
+      if (trx.transaction_type === "order") return "Pembelian Produk";
+      return "Transaksi";
+   };
+
    return (
-      <div className="guru-dashboard">
+      <div className="dashboard-page">
          <div className="dashboard-overview">
             <div className="dashboard-card dashboard-card--profile">
                <div className="dashboard-card__heading">Profil Guru</div>
@@ -115,72 +54,68 @@ export default function DashboardGuruPage() {
                )}
             </div>
 
-            <div className="dashboard-card">
+            <div className="dashboard-card dashboard-card--saldo">
                <div className="dashboard-card__heading">Saldo</div>
                {loading ? (
                   <Loading message="Memuat..." size="small" />
                ) : !teacher ? (
                   <div className="dashboard-card__empty">-</div>
                ) : (
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2c3e50" }}>
-                     {saldoText}
-                  </div>
+                  <div className="dashboard-card__value dashboard-card__value--saldo">{saldoText}</div>
                )}
             </div>
 
-            <div className="dashboard-card">
+            <div className="dashboard-card dashboard-card--debt">
                <div className="dashboard-card__heading">Hutang</div>
                {loading ? (
                   <Loading message="Memuat..." size="small" />
                ) : !teacher ? (
                   <div className="dashboard-card__empty">-</div>
                ) : (
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: teacher.total_hutang > 0 ? "#e74c3c" : "#27ae60" }}>
+                  <div className={`dashboard-card__value ${teacher.total_hutang > 0 ? "dashboard-card__value--warning" : "dashboard-card__value--ok"}`}>
                      {debtText}
                   </div>
                )}
             </div>
          </div>
 
-         <div className="dashboard-card">
-            <div className="dashboard-card__heading">Pesanan Terbaru</div>
+         <div className="dashboard-card dashboard-card--transactions">
+            <div className="section-header">
+               <h2 className="section-header__title">Pesanan Terbaru</h2>
+            </div>
             {loading ? (
                <Loading message="Memuat..." size="small" />
-            ) : orders.length === 0 ? (
-               <div className="dashboard-card__empty">Tidak ada pesanan.</div>
+            ) : transactions.length === 0 ? (
+               <div className="dashboard-card__empty">Tidak ada riwayat transaksi.</div>
             ) : (
-               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                     <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
-                        <th style={{ textAlign: "left", padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>ID</th>
-                        <th style={{ textAlign: "left", padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>Total</th>
-                        <th style={{ textAlign: "left", padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>Status Order</th>
-                        <th style={{ textAlign: "left", padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>Status Bayar</th>
-                        <th style={{ textAlign: "left", padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>Tanggal</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     {orders.slice(0, 5).map((order) => (
-                        <tr key={order.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                           <td style={{ padding: "0.5rem", fontSize: "0.9rem" }}>{order.id.substring(0, 10)}</td>
-                           <td style={{ padding: "0.5rem", fontSize: "0.9rem" }}>Rp {Number(order.total_harga).toLocaleString()}</td>
-                           <td style={{ padding: "0.5rem", fontSize: "0.9rem" }}>
-                              <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--positive" : ""}`}>
-                                 {order.status_order}
-                              </span>
-                           </td>
-                           <td style={{ padding: "0.5rem", fontSize: "0.9rem" }}>
-                              <span className={`status-badge ${order.status_pembayaran === "Lunas" ? "status-badge--positive" : "status-badge--negative"}`}>
-                                 {order.status_pembayaran}
-                              </span>
-                           </td>
-                           <td style={{ padding: "0.5rem", fontSize: "0.9rem" }}>
-                              {new Date(order.created_at).toLocaleDateString("id-ID")}
-                           </td>
+               <div className="transaction-table-wrap">
+                  <table className="transaction-table">
+                     <thead>
+                        <tr>
+                           <th className="transaction-table__head">Tanggal</th>
+                           <th className="transaction-table__head">Jenis</th>
+                           <th className="transaction-table__head">Metode</th>
+                           <th className="transaction-table__head">Status</th>
+                           <th className="transaction-table__head">Nominal</th>
                         </tr>
-                     ))}
-                  </tbody>
-               </table>
+                     </thead>
+                     <tbody>
+                        {transactions.slice(0, 5).map((trx) => (
+                           <tr key={trx.id} className="transaction-table__row">
+                              <td className="transaction-table__cell">{new Date(trx.created_at).toLocaleDateString("id-ID")}</td>
+                              <td className="transaction-table__cell">{transactionTypeLabel(trx)}</td>
+                              <td className="transaction-table__cell">{trx.payment_method || "-"}</td>
+                              <td className="transaction-table__cell">
+                                 {trx.transaction_type === "order"
+                                    ? trx.order_status || trx.payment_status || "-"
+                                    : trx.payment_status || "-"}
+                              </td>
+                              <td className="transaction-table__cell">Rp {Number(trx.amount_total || 0).toLocaleString("id-ID")}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
             )}
          </div>
       </div>

@@ -48,8 +48,9 @@ export default function BeliProdukPage() {
                   .order("created_at", { ascending: false }),
                supabase
                   .from("transaksi")
-                  .select("id,created_at,total_bayar,metode_pembayaran,status_pembayaran")
+                  .select("id,created_at,amount_total,payment_method,payment_status")
                   .eq("nis_siswa", nisSession)
+                  .neq("transaction_type", "order")
                   .order("created_at", { ascending: false }),
             ]);
 
@@ -64,7 +65,7 @@ export default function BeliProdukPage() {
             // Combine order_siswa and transaksi, then sort by date (limit to 10 total)
             const combined = [
                ...(ordersData ?? []).map((o) => ({ ...o, source: "order" })),
-               ...(transaksiData ?? []).map((t) => ({ ...t, total_harga: t.total_bayar, source: "kasir" })),
+               ...(transaksiData ?? []).map((t) => ({ ...t, total_harga: t.amount_total, source: "kasir" })),
             ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
 
             setOrders(combined);
@@ -170,6 +171,40 @@ export default function BeliProdukPage() {
          const { error: detailError } = await supabase.from("detail_order_siswa").insert(detailPayload);
          if (detailError) throw detailError;
 
+         const transactionId = orderId;
+         const paymentStatus = paymentMethod === "Saldo" ? "Lunas" : "Belum Lunas";
+         const amountPaid = paymentMethod === "Saldo" ? cartTotal : 0;
+         const amountDue = paymentMethod === "Saldo" ? 0 : cartTotal;
+
+         const { error: trxError } = await supabase.from("transaksi").insert({
+            id: transactionId,
+            customer_type: "siswa",
+            nis_siswa: student.nis,
+            transaction_type: "order",
+            payment_method: paymentMethod,
+            payment_status: paymentStatus,
+            amount_total: cartTotal,
+            amount_paid: amountPaid,
+            amount_due: amountDue,
+            note: `Order ${orderId}`,
+            order_status: "Menunggu",
+         });
+         if (trxError) throw trxError;
+
+         const detailTransactionPayload = cartItems.map((item) => {
+            const hargaSatuan = Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0);
+            return {
+               transaksi_id: transactionId,
+               produk_id: item.id,
+               jumlah: item.quantity,
+               harga_satuan: hargaSatuan,
+               sub_total: item.quantity * hargaSatuan,
+            };
+         });
+
+         const { error: detailTransError } = await supabase.from("detail_transaksi").insert(detailTransactionPayload);
+         if (detailTransError) throw detailTransError;
+
          if (paymentMethod === "Saldo") {
             const currentSaldo = Number(student.saldo ?? 0);
             const newSaldo = currentSaldo - cartTotal;
@@ -179,16 +214,20 @@ export default function BeliProdukPage() {
             if (updateSaldoError) throw updateSaldoError;
 
             // Create saldo history entry
-            const { error: historyError } = await supabase.from("topup_saldo").insert({
+            const { error: logError } = await supabase.from("saldo_log").insert({
+               customer_type: "siswa",
                nis_siswa: student.nis,
-               jumlah: cartTotal,
-               metode: "Pembayaran Saldo",
-               tipe: "Order_Saldo",
-               keterangan: `Pembelian produk order ${orderId}`,
+               transaksi_id: transactionId,
+               log_type: "Order_Saldo",
+               amount: -cartTotal,
+               balance_before: currentSaldo,
+               balance_after: newSaldo,
+               payment_method: "Saldo",
+               note: `Pembelian produk order ${orderId}`,
             });
 
-            if (historyError) {
-               console.error("Warning: Could not record saldo history:", historyError);
+            if (logError) {
+               console.error("Warning: Could not record saldo_log entry:", logError);
             }
 
             setStudent((current) => (current ? { ...current, saldo: newSaldo } : current));
@@ -249,7 +288,7 @@ export default function BeliProdukPage() {
                         <div key={product.id} className="product-card">
                            <div className="product-card__name">{product.nama_produk}</div>
                            <div className="product-card__info">
-                              <div className="product-card__price">Rp {Number(product.harga_jual ?? product.harga_beli ?? 0).toLocaleString()}</div>
+                              <div className="product-card__price">Rp {Number(product.harga_jual ?? product.harga_beli ?? 0).toLocaleString("id-ID")}</div>
                               <div className="product-card__stok">Stok: {product.stok}</div>
                            </div>
                            <div className="product-card__actions">
@@ -292,7 +331,7 @@ export default function BeliProdukPage() {
                               <div>
                                  <div className="cart-item__name">{item.nama_produk}</div>
                                  <div className="cart-item__qty">
-                                    Rp {Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0).toLocaleString()} x {item.quantity}
+                                    Rp {Number(item.harga_jual ?? item.harga_beli ?? item.harga ?? 0).toLocaleString("id-ID")} x {item.quantity}
                                  </div>
                               </div>
                               <div className="cart-item__remove" onClick={() => removeFromCart(item.id)}>
@@ -305,11 +344,11 @@ export default function BeliProdukPage() {
                      <div className="cart-summary">
                         <div className="cart-summary__item">
                            <span>Subtotal</span>
-                           <span>Rp {Number(cartTotal).toLocaleString()}</span>
+                           <span>Rp {Number(cartTotal).toLocaleString("id-ID")}</span>
                         </div>
                         <div className="cart-summary__total">
                            <span>Total</span>
-                           <span>Rp {Number(cartTotal).toLocaleString()}</span>
+                           <span>Rp {Number(cartTotal).toLocaleString("id-ID")}</span>
                         </div>
                      </div>
 
@@ -342,41 +381,35 @@ export default function BeliProdukPage() {
                <table className="orders-table">
                   <thead>
                      <tr>
-                        <th>ID</th>
-                        <th>Total</th>
-                        <th>Metode</th>
-                        <th>Status Order</th>
-                        <th>Status Bayar</th>
-                        <th>Sumber</th>
                         <th>Tanggal</th>
+                        <th>Jenis</th>
+                        <th>Metode</th>
+                        <th>Status</th>
+                        <th>Nominal</th>
                      </tr>
                   </thead>
                   <tbody>
                      {orders.map((order) => (
                         <tr key={`${order.source}-${order.id}`}>
-                           <td>{order.id.substring(0, 12)}</td>
-                           <td>Rp {Number(order.total_harga).toLocaleString()}</td>
-                           <td>{order.metode_pembayaran}</td>
-                           <td>
-                              {order.source === "order" ? (
-                                 <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
-                                    {order.status_order}
-                                 </span>
-                              ) : (
-                                 <span style={{ color: "#999" }}>-</span>
-                              )}
-                           </td>
-                           <td>
-                              <span className={`status-badge ${order.status_pembayaran === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
-                                 {order.status_pembayaran}
-                              </span>
-                           </td>
+                           <td>{new Date(order.created_at).toLocaleDateString("id-ID")}</td>
                            <td>
                               <span className={`source-badge source-badge--${order.source}`}>
                                  {order.source === "order" ? "Pesanan" : "Kasir"}
                               </span>
                            </td>
-                           <td>{new Date(order.created_at).toLocaleDateString("id-ID")}</td>
+                           <td>{order.payment_method ?? order.metode_pembayaran ?? "-"}</td>
+                           <td>
+                              {order.source === "order" ? (
+                                 <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
+                                    {order.status_order ?? "-"}
+                                 </span>
+                              ) : (
+                                 <span className={`status-badge ${(order.payment_status ?? order.status_pembayaran) === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
+                                    {order.payment_status ?? order.status_pembayaran ?? "-"}
+                                 </span>
+                              )}
+                           </td>
+                           <td>Rp {Number(order.total_harga).toLocaleString("id-ID")}</td>
                         </tr>
                      ))}
                   </tbody>

@@ -125,27 +125,31 @@ export default function KasirPage() {
       try {
          // create transaksi (generate simple id)
          const trxId = `trx_${Date.now()}`;
-         const { data: transaksiData, error: tErr } = await supabase
-            .from("transaksi")
-            .insert({
-               id: trxId,
-               nis_siswa: customerType === "siswa" ? customerId : null,
-               nip_guru: customerType === "guru" ? customerId : null,
-               metode_pembayaran: paymentMethod,
-               status_pembayaran: paymentMethod === "Hutang" ? "Belum Lunas" : "Lunas",
-               total_bayar: total,
-            })
-            .select()
-            .single();
+         const transactionRow = {
+            id: trxId,
+            customer_type: customerType,
+            nis_siswa: customerType === "siswa" ? customerId : null,
+            nip_guru: customerType === "guru" ? customerId : null,
+            transaction_type: "purchase",
+            payment_method: paymentMethod,
+            payment_status: paymentMethod === "Hutang" ? "Belum Lunas" : "Lunas",
+            amount_total: total,
+            amount_paid: paymentMethod === "Hutang" ? 0 : total,
+            amount_due: paymentMethod === "Hutang" ? total : 0,
+         };
+
+         const { data: transaksiData, error: tErr } = await supabase.from("transaksi").insert(transactionRow).select().single();
          if (tErr) throw tErr;
 
          const transaksiId = transaksiData.id ?? trxId;
 
-         // insert detail_transaksi (schema uses `jumlah`)
+         // insert detail_transaksi (schema requires harga_satuan and sub_total)
          const details = cart.map((it) => ({
             transaksi_id: transaksiId,
             produk_id: it.id,
             jumlah: it.qty,
+            harga_satuan: it.harga,
+            sub_total: it.qty * it.harga,
          }));
          const { error: dErr } = await supabase.from("detail_transaksi").insert(details);
          if (dErr) throw dErr;
@@ -172,10 +176,32 @@ export default function KasirPage() {
                const siswaObj = selectedSiswa?.siswa;
                const newSaldo = Number(siswaObj?.saldo ?? 0) - total;
                await supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", customerId);
+               await supabase.from("saldo_log").insert({
+                  customer_type: "siswa",
+                  nis_siswa: customerId,
+                  transaksi_id: transaksiId,
+                  log_type: "Order_Saldo",
+                  amount: -total,
+                  balance_before: Number(siswaObj?.saldo ?? 0),
+                  balance_after: newSaldo,
+                  payment_method: "Saldo",
+                  note: `Pembelian produk via kasir dengan saldo`,
+               });
             } else {
                const guruObj = selectedGuru?.guru;
                const newSaldo = Number(guruObj?.saldo ?? 0) - total;
                await supabase.from("guru").update({ saldo: newSaldo }).eq("nip", customerId);
+               await supabase.from("saldo_log").insert({
+                  customer_type: "guru",
+                  nip_guru: customerId,
+                  transaksi_id: transaksiId,
+                  log_type: "Order_Saldo",
+                  amount: -total,
+                  balance_before: Number(guruObj?.saldo ?? 0),
+                  balance_after: newSaldo,
+                  payment_method: "Saldo",
+                  note: `Pembelian produk via kasir dengan saldo`,
+               });
             }
          }
 

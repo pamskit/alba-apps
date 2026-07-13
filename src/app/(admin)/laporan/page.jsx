@@ -20,7 +20,7 @@ const formatDate = (value) => {
    return new Date(value).toLocaleString("id-ID");
 };
 
-const isValidTransaction = (item) => item.status_pembayaran === "Lunas";
+const isValidTransaction = (item) => item.payment_status === "Lunas";
 const isValidOrder = (item) => item.status_order === "Dikonfirmasi" && item.status_pembayaran === "Lunas";
 
 export default function LaporanPage() {
@@ -54,7 +54,7 @@ export default function LaporanPage() {
                supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
                supabase
                   .from("transaksi")
-                  .select("id, nis_siswa, nip_guru, metode_pembayaran, status_pembayaran, total_bayar, created_at")
+                  .select("id, nis_siswa, nip_guru, payment_method, payment_status, amount_total, created_at")
                   .gte("created_at", start)
                   .lte("created_at", end)
                   .order("created_at", { ascending: false }),
@@ -126,9 +126,9 @@ export default function LaporanPage() {
             type: "Transaksi Kasir",
             tanggal: item.created_at,
             pelanggan: item.nis_siswa || item.nip_guru || "-",
-            metode: item.metode_pembayaran,
-            status: item.status_pembayaran,
-            total: Number(item.total_bayar || 0),
+            metode: item.payment_method,
+            status: item.payment_status,
+            total: Number(item.amount_total || 0),
          })),
          ...validOrders.map((item) => ({
             id: item.id,

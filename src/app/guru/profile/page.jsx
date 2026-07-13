@@ -1,116 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase";
-import { getRoleSession } from "@/utils/auth";
+import { useTeacherProfile } from "@/hooks/useTeacherProfile";
 import Loading from "@/components/Loading";
+import ProfileInfoCard from "@/components/ProfileInfoCard";
+import PasswordChangeForm from "@/components/PasswordChangeForm";
 import "./settings.css";
 
-const supabase = createClient();
-
 export default function GuruProfilePage() {
-   const [teacher, setTeacher] = useState(null);
-   const [loading, setLoading] = useState(true);
-   const [saving, setSaving] = useState(false);
-   const [formData, setFormData] = useState({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-   });
-   const [message, setMessage] = useState({ type: "", text: "" });
+   const { teacher, loading } = useTeacherProfile();
 
-   async function fetchTeacher() {
-      setLoading(true);
-      try {
-         const session = getRoleSession("guru");
-         const nipSession = session?.nip ?? null;
+   async function handlePasswordChange(values) {
+      const response = await fetch("/api/auth/change-password", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify(values),
+      });
 
-         if (!nipSession) {
-            setTeacher(null);
-            return;
-         }
-
-         const { data, error } = await supabase
-            .from("guru")
-            .select("nip,nama_guru,bidang_studi,saldo,total_hutang,password")
-            .eq("nip", nipSession)
-            .maybeSingle();
-
-         if (error) throw error;
-         setTeacher(data ?? null);
-      } catch (error) {
-         console.error(error);
-         setTeacher(null);
-      } finally {
-         setLoading(false);
-      }
+      return response.json();
    }
 
-   useEffect(() => {
-      async function loadTeacher() {
-         await fetchTeacher();
-      }
-
-      void loadTeacher();
-   }, []);
-
-   function handleInputChange(event) {
-      const { name, value } = event.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      if (message.text) {
-         setMessage({ type: "", text: "" });
-      }
-   }
-
-   async function handleSubmit(event) {
-      event.preventDefault();
-
-      if (!teacher) {
-         setMessage({ type: "error", text: "Data guru tidak tersedia." });
-         return;
-      }
-
-      const { currentPassword, newPassword, confirmPassword } = formData;
-
-      if (!currentPassword || !newPassword || !confirmPassword) {
-         setMessage({ type: "error", text: "Semua kolom wajib diisi." });
-         return;
-      }
-
-      if (String(teacher.password) !== String(currentPassword)) {
-         setMessage({ type: "error", text: "Password lama tidak sesuai." });
-         return;
-      }
-
-      if (newPassword.length < 6) {
-         setMessage({ type: "error", text: "Password baru minimal 6 karakter." });
-         return;
-      }
-
-      if (newPassword !== confirmPassword) {
-         setMessage({ type: "error", text: "Konfirmasi password tidak cocok." });
-         return;
-      }
-
-      setSaving(true);
-      try {
-         const { error } = await supabase
-            .from("guru")
-            .update({ password: newPassword })
-            .eq("nip", teacher.nip);
-
-         if (error) throw error;
-
-         setMessage({ type: "success", text: "Password berhasil diperbarui." });
-         setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-         setTeacher((prev) => (prev ? { ...prev, password: newPassword } : prev));
-      } catch (error) {
-         console.error(error);
-         setMessage({ type: "error", text: "Gagal mengubah password." });
-      } finally {
-         setSaving(false);
-      }
-   }
+   const profileFields = teacher
+      ? [
+         { label: "Nama", value: teacher.nama_guru },
+         { label: "NIP", value: teacher.nip },
+         { label: "Bidang Studi", value: teacher.bidang_studi },
+         { label: "Saldo", value: `Rp ${Number(teacher.saldo ?? 0).toLocaleString()}` },
+         { label: "Total Hutang", value: `Rp ${Number(teacher.total_hutang ?? 0).toLocaleString()}` },
+      ]
+      : [];
 
    return (
       <div className="profile-page">
@@ -120,96 +37,14 @@ export default function GuruProfilePage() {
          </div>
 
          <div className="profile-grid">
+            <ProfileInfoCard
+               title="Data Guru"
+               fields={profileFields}
+               loading={loading}
+               emptyMessage="Data guru tidak tersedia."
+            />
             <section className="profile-card">
-               <h2>Data Guru</h2>
-               {loading ? (
-                  <Loading message="Memuat data guru..." size="small" />
-               ) : !teacher ? (
-                  <div className="profile-card__empty">Data guru tidak tersedia.</div>
-               ) : (
-                  <div className="profile-info">
-                     <div className="profile-info__row">
-                        <span className="profile-info__label">Nama</span>
-                        <span>{teacher.nama_guru}</span>
-                     </div>
-                     <div className="profile-info__row">
-                        <span className="profile-info__label">NIP</span>
-                        <span>{teacher.nip}</span>
-                     </div>
-                     <div className="profile-info__row">
-                        <span className="profile-info__label">Bidang Studi</span>
-                        <span>{teacher.bidang_studi}</span>
-                     </div>
-                     <div className="profile-info__row">
-                        <span className="profile-info__label">Saldo</span>
-                        <span>Rp {Number(teacher.saldo ?? 0).toLocaleString()}</span>
-                     </div>
-                     <div className="profile-info__row">
-                        <span className="profile-info__label">Total Hutang</span>
-                        <span>Rp {Number(teacher.total_hutang ?? 0).toLocaleString()}</span>
-                     </div>
-                  </div>
-               )}
-            </section>
-
-            <section className="profile-card">
-               <h2>Ubah Password</h2>
-               <form className="profile-form" onSubmit={handleSubmit}>
-                  {message.text && (
-                     <div className={`form-message form-message--${message.type}`}>
-                        {message.text}
-                     </div>
-                  )}
-
-                  <div>
-                     <label className="profile-form__label" htmlFor="currentPassword">
-                        Password Lama
-                     </label>
-                     <input
-                        id="currentPassword"
-                        type="password"
-                        name="currentPassword"
-                        value={formData.currentPassword}
-                        onChange={handleInputChange}
-                        placeholder="Masukkan password lama"
-                        required
-                     />
-                  </div>
-
-                  <div>
-                     <label className="profile-form__label" htmlFor="newPassword">
-                        Password Baru
-                     </label>
-                     <input
-                        id="newPassword"
-                        type="password"
-                        name="newPassword"
-                        value={formData.newPassword}
-                        onChange={handleInputChange}
-                        placeholder="Masukkan password baru (minimal 6 karakter)"
-                        required
-                     />
-                  </div>
-
-                  <div>
-                     <label className="profile-form__label" htmlFor="confirmPassword">
-                        Konfirmasi Password Baru
-                     </label>
-                     <input
-                        id="confirmPassword"
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        placeholder="Ketik ulang password baru"
-                        required
-                     />
-                  </div>
-
-                  <button type="submit" disabled={saving} className="btn btn--primary">
-                     {saving ? "Menyimpan..." : "Perbarui Password"}
-                  </button>
-               </form>
+               <PasswordChangeForm onSubmit={handlePasswordChange} submitLabel="Perbarui Password" />
             </section>
          </div>
       </div>

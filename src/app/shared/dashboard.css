@@ -1,14 +1,8 @@
-.student-dashboard {
-   padding: 20px;
-   display: flex;
-   flex-direction: column;
-   gap: 24px;
-}
-
 .dashboard-overview {
    display: grid;
    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-   gap: 16px;
+   gap: 1.5rem;
+   margin-bottom: 2rem;
 }
 
 .dashboard-card {
@@ -17,6 +11,10 @@
    border-radius: 14px;
    padding: 20px;
    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-card--profile {
+   grid-column: 1 / -1;
 }
 
 .dashboard-card--transactions {
@@ -128,4 +126,32 @@
    padding: 20px;
    text-align: center;
    color: #6b7280;
+}
+
+.status-badge {
+   display: inline-block;
+   padding: 0.25rem 0.75rem;
+   border-radius: 20px;
+   font-size: 0.8rem;
+   font-weight: 500;
+}
+
+.status-badge--positive {
+   background-color: #d4edda;
+   color: #155724;
+}
+
+.status-badge--negative {
+   background-color: #f8d7da;
+   color: #721c24;
+}
+
+@media (max-width: 768px) {
+   .dashboard-overview {
+      grid-template-columns: 1fr;
+   }
+
+   .dashboard-card--profile {
+      grid-column: 1;
+   }
 }

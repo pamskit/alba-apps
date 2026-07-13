@@ -7,6 +7,7 @@ const supabase = createClient();
 export function useTeacher({ initialFetch = true } = {}) {
   const [teacher, setTeacher] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [activeNip, setActiveNip] = useState(null);
   const [loading, setLoading] = useState(initialFetch);
   const [error, setError] = useState(null);
@@ -21,6 +22,7 @@ export function useTeacher({ initialFetch = true } = {}) {
         setTeacher(null);
         setActiveNip(null);
         setOrders([]);
+        setTransactions([]);
         return;
       }
 
@@ -42,15 +44,24 @@ export function useTeacher({ initialFetch = true } = {}) {
       setActiveNip(activeTeacher.nip);
       setTeacher(activeTeacher);
 
-      const { data: orderData, error: orderError } = await supabase
-        .from("order_guru")
-        .select("id,metode_pembayaran,status_order,status_pembayaran,total_harga,created_at")
-        .eq("nip_guru", activeTeacher.nip)
-        .order("created_at", { ascending: false });
+      const [{ data: orderData, error: orderError }, { data: transactionData, error: transactionError }] = await Promise.all([
+        supabase
+          .from("order_guru")
+          .select("id,metode_pembayaran,status_order,status_pembayaran,total_harga,created_at")
+          .eq("nip_guru", activeTeacher.nip)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("transaksi")
+          .select("id,transaction_type,order_status,payment_method,payment_status,amount_total,amount_paid,amount_due,created_at")
+          .eq("nip_guru", activeTeacher.nip)
+          .order("created_at", { ascending: false }),
+      ]);
 
       if (orderError) throw orderError;
+      if (transactionError) throw transactionError;
 
       setOrders(orderData ?? []);
+      setTransactions(transactionData ?? []);
     } catch (err) {
       console.error(err);
       setError(err);
@@ -67,5 +78,5 @@ export function useTeacher({ initialFetch = true } = {}) {
     })();
   }, [fetch, initialFetch]);
 
-  return { teacher, orders, activeNip, loading, error, refresh: fetch, setTeacher };
+  return { teacher, orders, transactions, activeNip, loading, error, refresh: fetch, setTeacher };
 }

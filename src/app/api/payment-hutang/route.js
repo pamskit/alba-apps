@@ -19,8 +19,7 @@ export async function POST(req) {
 
     const tableUser = userType === "siswa" ? "siswa" : "guru";
     const userId_column = userType === "siswa" ? "nis" : "nip";
-    const saldoLogTable =
-      userType === "siswa" ? "topup_saldo" : "topup_saldo_guru";
+    // unified saldo_log will be used for history
 
     // Get user data
     const { data: userData, error: userError } = await supabase
@@ -64,19 +63,33 @@ export async function POST(req) {
       return jsonError("Gagal update hutang", 500);
     }
 
-    // Log transaction
-    const { error: logError } = await supabase.from(saldoLogTable).insert({
-      [userId_column]: userId,
-      jumlah: amount,
-      metode: paymentMethod,
-      tipe: "Hutang_Payment",
-      keterangan: `Pembayaran hutang - ${paymentMethod === "Saldo" ? "dari saldo" : "oleh admin"}`,
+    // Create transaksi row for hutang payment
+    const trxId = `trx_hutang_${Date.now()}`;
+    await supabase.from("transaksi").insert({
+      id: trxId,
+      customer_type: userType,
+      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+      transaction_type: "hutang_payment",
+      payment_method: paymentMethod,
+      payment_status: "Lunas",
+      amount_total: amount,
+      amount_paid: amount,
+      amount_due: 0,
+      note: "Pembayaran hutang",
     });
 
-    if (logError) {
-      console.error("Log insertion error:", logError);
-      // Don't fail if logging fails, as the transaction was already processed
-    }
+    // Log to unified saldo_log
+    await supabase.from("saldo_log").insert({
+      customer_type: userType,
+      [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+      transaksi_id: trxId,
+      log_type: "Hutang_Payment",
+      amount: amount,
+      balance_before: userData.saldo,
+      balance_after: updateObj.saldo ?? userData.saldo,
+      payment_method: paymentMethod,
+      note: `Pembayaran hutang - ${paymentMethod === "Saldo" ? "dari saldo" : "oleh admin"}`,
+    });
 
     return jsonSuccess({
       newHutang: newHutang,

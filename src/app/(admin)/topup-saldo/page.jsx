@@ -77,37 +77,24 @@ export default function AdminTopupSaldoPage() {
 
       setLoading(true);
       try {
-         if (isSiswa) {
-            const student = siswa.find((item) => String(item.nis) === String(selectedId));
-            if (!student) return toast.error("Siswa tidak ditemukan.");
-            const newSaldo = Number(student.saldo ?? 0) + amountValue;
-            const { error: updateError } = await supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", selectedId);
-            if (updateError) throw updateError;
-
-            const { error: insertError } = await supabase.from("topup_saldo").insert({
-               nis_siswa: selectedId,
-               jumlah: amountValue,
+         const response = await fetch("/api/topup-saldo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+               userType: selectedType,
+               userId: Number(selectedId),
+               amount: amountValue,
                metode: method,
-               keterangan: note || null,
-            });
-            if (insertError) throw insertError;
-         } else {
-            const teacher = guru.find((item) => String(item.nip) === String(selectedId));
-            if (!teacher) return toast.error("Guru tidak ditemukan.");
-            const newSaldo = Number(teacher.saldo ?? 0) + amountValue;
-            const { error: updateError } = await supabase.from("guru").update({ saldo: newSaldo }).eq("nip", selectedId);
-            if (updateError) throw updateError;
+               note: note || `Top-up saldo oleh admin`,
+            }),
+         });
 
-            const { error: insertError } = await supabase.from("topup_saldo_guru").insert({
-               nip_guru: selectedId,
-               jumlah: amountValue,
-               metode: method,
-               keterangan: note || null,
-            });
-            if (insertError) throw insertError;
+         const result = await response.json();
+         if (!response.ok) {
+            throw new Error(result.error || "Gagal melakukan top-up saldo.");
          }
 
-         toast.success("Top-up saldo berhasil.");
+         toast.success(result.message || "Top-up saldo berhasil.");
          setAmount("");
          setNote("");
          setSelectedSiswa("");
@@ -115,7 +102,7 @@ export default function AdminTopupSaldoPage() {
          await Promise.all([fetchSiswa(), fetchGuru()]);
       } catch (error) {
          console.error(error);
-         toast.error("Gagal melakukan top-up saldo.");
+         toast.error(error.message || "Gagal melakukan top-up saldo.");
       } finally {
          setLoading(false);
       }

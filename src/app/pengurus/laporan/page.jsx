@@ -53,7 +53,7 @@ export default function PengurusLaporanPage() {
             const end = now.toISOString();
 
             const [transaksiRes, orderSiswaRes, orderGuruRes, siswaRes, guruRes] = await Promise.all([
-               supabase.from("transaksi").select("id,total_bayar,status_pembayaran,created_at").gte("created_at", start).lte("created_at", end),
+               supabase.from("transaksi").select("id,amount_total,payment_status,created_at").gte("created_at", start).lte("created_at", end),
                supabase.from("order_siswa").select("id,total_harga,status_order,status_pembayaran,created_at").gte("created_at", start).lte("created_at", end),
                supabase.from("order_guru").select("id,total_harga,status_order,status_pembayaran,created_at").gte("created_at", start).lte("created_at", end),
                supabase.from("siswa").select("saldo,total_hutang").not("saldo", "is", null),
@@ -66,13 +66,13 @@ export default function PengurusLaporanPage() {
             if (siswaRes.error) throw siswaRes.error;
             if (guruRes.error) throw guruRes.error;
 
-            const validTransactions = (transaksiRes.data ?? []).filter((item) => item.status_pembayaran === "Lunas");
+            const validTransactions = (transaksiRes.data ?? []).filter((item) => item.payment_status === "Lunas");
             const validOrders = [
                ...(orderSiswaRes.data ?? []).filter((item) => item.status_order === "Dikonfirmasi" && item.status_pembayaran === "Lunas"),
                ...(orderGuruRes.data ?? []).filter((item) => item.status_order === "Dikonfirmasi" && item.status_pembayaran === "Lunas"),
             ];
 
-            const totalRevenue = validTransactions.reduce((sum, item) => sum + Number(item.total_bayar || 0), 0) + validOrders.reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+            const totalRevenue = validTransactions.reduce((sum, item) => sum + Number(item.amount_total || 0), 0) + validOrders.reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
             const totalTransactions = validTransactions.length + validOrders.length;
             const totalHutang = (siswaRes.data ?? []).reduce((sum, item) => sum + Number(item.total_hutang || 0), 0) + (guruRes.data ?? []).reduce((sum, item) => sum + Number(item.total_hutang || 0), 0);
 
@@ -80,7 +80,7 @@ export default function PengurusLaporanPage() {
                ...validTransactions.map((item) => ({
                   type: "Transaksi Kasir",
                   tanggal: item.created_at,
-                  total: Number(item.total_bayar || 0),
+                  total: Number(item.amount_total || 0),
                })),
                ...validOrders.map((item) => ({
                   type: "Order",

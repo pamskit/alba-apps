@@ -1,84 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/utils/supabase";
-import { getRoleSession } from "@/utils/auth";
+import { useMemo } from "react";
+import { useStudent } from "@/hooks/useStudent";
 import Loading from "@/components/Loading";
 
-const supabase = createClient();
-
 export default function DashboardSiswaPage() {
-   const [activeNis, setActiveNis] = useState(null);
-   const [student, setStudent] = useState(null);
-   const [transactions, setTransactions] = useState([]);
-   const [loading, setLoading] = useState(true);
+   const { student, transactions, activeNis, loading } = useStudent();
 
-   async function fetchData() {
-      setLoading(true);
-      try {
-         const session = getRoleSession("siswa");
-         const nisSession = session?.nis ?? null;
-         if (!nisSession) {
-            setStudent(null);
-            setActiveNis(null);
-            return;
-         }
-
-         const { data: siswaData, error: siswaError } = await supabase
-            .from("siswa")
-            .select("nis,nama_siswa,kelas,total_hutang,saldo")
-            .eq("nis", nisSession)
-            .maybeSingle();
-
-         if (siswaError) throw siswaError;
-         const activeStudent = siswaData ?? null;
-         if (!activeStudent) {
-            setStudent(null);
-            setActiveNis(null);
-            return;
-         }
-
-         setActiveNis(activeStudent.nis);
-         setStudent(activeStudent);
-
-         const { data: transactionData, error: transactionError } = await supabase
-            .from("transaksi")
-            .select("id,metode_pembayaran,status_pembayaran,total_bayar,created_at")
-            .eq("nis_siswa", activeStudent.nis)
-            .order("created_at", { ascending: false });
-
-         if (transactionError) throw transactionError;
-
-         setTransactions(transactionData ?? []);
-      } catch (error) {
-         console.error(error);
-      } finally {
-         setLoading(false);
-      }
-   }
-
-   useEffect(() => {
-      async function loadDashboard() {
-         await fetchData();
-      }
-
-      void loadDashboard();
-   }, []);
+   const transactionTypeLabel = (trx) => {
+      if (trx.transaction_type === "hutang_payment") return "Pelunasan Hutang";
+      if (trx.transaction_type === "order") return "Pembelian Produk";
+      return "Transaksi";
+   };
 
    const debtText = useMemo(() => {
       if (!student) return "";
-      return student.total_hutang > 0
-         ? `Rp ${Number(student.total_hutang).toLocaleString()}`
-         : "Rp 0";
+      return student.total_hutang > 0 ? `Rp ${Number(student.total_hutang).toLocaleString("id-ID")}` : "Rp 0";
    }, [student]);
 
    const saldoText = useMemo(() => {
       if (!student) return "";
-      return `Rp ${Number(student.saldo ?? 0).toLocaleString()}`;
+      return `Rp ${Number(student.saldo ?? 0).toLocaleString("id-ID")}`;
    }, [student]);
 
    return (
-      <div className="student-dashboard">
+      <div className="dashboard-page">
          <div className="dashboard-overview">
             <div className="dashboard-card dashboard-card--profile">
                <div className="dashboard-card__heading">Profil Siswa</div>
@@ -112,8 +58,12 @@ export default function DashboardSiswaPage() {
                   <div className="dashboard-card__empty">Belum ada data.</div>
                ) : (
                   <div className="dashboard-card__value-wrap">
-                     <div className={student.total_hutang > 0 ? "dashboard-card__value dashboard-card__value--warning" : "dashboard-card__value dashboard-card__value--ok"}>{debtText}</div>
-                     <div className="dashboard-card__meta">{student.total_hutang > 0 ? "Ada tunggakan yang perlu dibayar" : "Tidak ada hutang saat ini"}</div>
+                     <div className={student.total_hutang > 0 ? "dashboard-card__value dashboard-card__value--warning" : "dashboard-card__value dashboard-card__value--ok"}>
+                        {debtText}
+                     </div>
+                     <div className="dashboard-card__meta">
+                        {student.total_hutang > 0 ? "Ada tunggakan yang perlu dibayar" : "Tidak ada hutang saat ini"}
+                     </div>
                   </div>
                )}
             </div>
@@ -143,9 +93,10 @@ export default function DashboardSiswaPage() {
                   <thead>
                      <tr>
                         <th className="transaction-table__head">Tanggal</th>
+                        <th className="transaction-table__head">Jenis</th>
                         <th className="transaction-table__head">Metode</th>
                         <th className="transaction-table__head">Status</th>
-                        <th className="transaction-table__head">Total Bayar</th>
+                        <th className="transaction-table__head">Nominal</th>
                      </tr>
                   </thead>
                   <tbody>
@@ -159,9 +110,14 @@ export default function DashboardSiswaPage() {
                         transactions.map((trx) => (
                            <tr key={trx.id} className="transaction-table__row">
                               <td className="transaction-table__cell">{new Date(trx.created_at).toLocaleString("id-ID")}</td>
-                              <td className="transaction-table__cell">{trx.metode_pembayaran}</td>
-                              <td className="transaction-table__cell">{trx.status_pembayaran || "-"}</td>
-                              <td className="transaction-table__cell">Rp {Number(trx.total_bayar || 0).toLocaleString()}</td>
+                              <td className="transaction-table__cell">{transactionTypeLabel(trx)}</td>
+                              <td className="transaction-table__cell">{trx.payment_method || "-"}</td>
+                              <td className="transaction-table__cell">
+                                 {trx.transaction_type === "order"
+                                    ? trx.order_status || trx.payment_status || "-"
+                                    : trx.payment_status || "-"}
+                              </td>
+                              <td className="transaction-table__cell">Rp {Number(trx.amount_total || 0).toLocaleString("id-ID")}</td>
                            </tr>
                         ))
                      )}

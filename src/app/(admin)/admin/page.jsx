@@ -24,7 +24,7 @@ export default function AdminDashboardPage() {
          try {
             const [{ data: produkData }, { data: transaksiData }, { data: detailTransaksiData }, { data: orderSiswaData }, { data: detailOrderSiswaData }, { data: orderGuruData }, { data: detailOrderGuruData }] = await Promise.all([
                supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
-               supabase.from("transaksi").select("id,total_bayar,metode_pembayaran,status_pembayaran,created_at,nis_siswa,nip_guru").order("created_at", { ascending: false }).limit(12),
+               supabase.from("transaksi").select("id,amount_total,amount_paid,payment_method,payment_status,created_at,nis_siswa,nip_guru").order("created_at", { ascending: false }).limit(12),
                supabase.from("detail_transaksi").select("transaksi_id,produk_id,jumlah"),
                supabase.from("order_siswa").select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nis_siswa").order("created_at", { ascending: false }),
                supabase.from("detail_order_siswa").select("order_id,produk_id,jumlah,harga_satuan"),
@@ -50,7 +50,7 @@ export default function AdminDashboardPage() {
    }, []);
 
    const validTransactions = useMemo(() => {
-      return (transactions ?? []).filter((item) => item.status_pembayaran === "Lunas");
+      return (transactions ?? []).filter((item) => item.payment_status === "Lunas");
    }, [transactions]);
 
    const confirmedOrders = useMemo(() => {
@@ -70,9 +70,9 @@ export default function AdminDashboardPage() {
             id: item.id,
             source: "transaksi",
             created_at: item.created_at,
-            amount: Number(item.total_bayar || 0),
-            status: item.status_pembayaran,
-            method: item.metode_pembayaran,
+            amount: Number(item.amount_total || 0),
+            status: item.payment_status,
+            method: item.payment_method,
             label: "Transaksi",
          })),
          ...confirmedOrders.map((item) => ({
@@ -176,10 +176,10 @@ export default function AdminDashboardPage() {
          ...validTransactions.map((item) => ({
             id: item.id,
             type: "Transaksi",
-            label: `Transaksi • ${item.metode_pembayaran}`,
+            label: `Transaksi • ${item.payment_method}`,
             created_at: item.created_at,
-            amount: Number(item.total_bayar || 0),
-            status: item.status_pembayaran,
+            amount: Number(item.amount_total || 0),
+            status: item.payment_status,
          })),
          ...confirmedOrders.map((item) => ({
             id: item.id,

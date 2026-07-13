@@ -25,12 +25,22 @@ export default function OrderSiswaPage() {
       setErrorMessage("");
       try {
          const { data, error } = await supabase
-            .from("order_siswa")
-            .select(`id,created_at,total_harga,metode_pembayaran,status_order,status_pembayaran,keterangan,siswa(nis,nama_siswa,kelas,saldo,total_hutang)`)
+            .from("transaksi")
+            .select(`id,created_at,amount_total,payment_method,order_status,payment_status,note,nis_siswa,siswa(nis,nama_siswa,kelas,saldo,total_hutang)`)
+            .eq("transaction_type", "order")
+            .eq("customer_type", "siswa")
             .order("created_at", { ascending: false });
 
          if (error) throw error;
-         const orderList = data ?? [];
+         const orderList = (data ?? []).map(order => ({
+            ...order,
+            id: order.id,
+            total_harga: order.amount_total,
+            metode_pembayaran: order.payment_method,
+            status_order: order.order_status,
+            status_pembayaran: order.payment_status,
+            keterangan: order.note
+         }));
          setOrders(orderList);
       } catch (error) {
          console.error(error);
@@ -45,9 +55,9 @@ export default function OrderSiswaPage() {
       setErrorMessage("");
       try {
          const { data, error } = await supabase
-            .from("detail_order_siswa")
+            .from("detail_transaksi")
             .select("id,produk_id,jumlah,harga_satuan,produk(nama_produk)")
-            .eq("order_id", orderId);
+            .eq("transaksi_id", orderId);
 
          if (error) throw error;
          setOrderItems(data ?? []);
@@ -120,7 +130,7 @@ export default function OrderSiswaPage() {
       setErrorMessage("");
       try {
          const { error: orderError } = await supabase
-            .from("order_siswa")
+            .from("transaksi")
             .update(updates)
             .eq("id", order.id);
          if (orderError) throw orderError;
@@ -146,15 +156,20 @@ export default function OrderSiswaPage() {
 
       const currentHutang = Number(order.siswa.total_hutang ?? 0);
       const totalHarga = Number(order.total_harga ?? 0);
-      const updates = { status_order: "Dikonfirmasi" };
+      const updates = { order_status: "Dikonfirmasi" };
 
       if (order.metode_pembayaran === "Saldo") {
          setActionLoading(true);
          try {
             const operations = [];
-            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
+            operations.push(supabase.from("transaksi").update({ ...updates, payment_status: "Lunas" }).eq("id", order.id));
+            operations.push(
+               supabase
+                  .from("order_siswa")
+                  .update({ status_order: "Dikonfirmasi", status_pembayaran: "Lunas" })
+                  .eq("id", order.id)
+            );
 
-            // Saldo was already deducted when order was created, no additional log needed
             const results = await Promise.all(operations);
             for (const result of results) {
                if (result.error) throw result.error;
@@ -178,16 +193,26 @@ export default function OrderSiswaPage() {
          try {
             const operations = [];
             operations.push(supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis));
-            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Belum Lunas" }).eq("id", order.id));
-
-            // Create transaksi entry for hutang confirmation
+            operations.push(supabase.from("transaksi").update({ ...updates, payment_status: "Belum Lunas" }).eq("id", order.id));
             operations.push(
-               supabase.from("transaksi").insert({
-                  id: `trx_hutang_${Date.now()}`,
+               supabase
+                  .from("order_siswa")
+                  .update({ status_order: "Dikonfirmasi", status_pembayaran: "Belum Lunas" })
+                  .eq("id", order.id)
+            );
+
+            // Log hutang confirmation in saldo_log
+            operations.push(
+               supabase.from("saldo_log").insert({
+                  customer_type: "siswa",
                   nis_siswa: order.siswa.nis,
-                  total_bayar: totalHarga,
-                  metode_pembayaran: "Hutang",
-                  status_pembayaran: "Belum Lunas",
+                  transaksi_id: order.id,
+                  log_type: "Hutang_Payment",
+                  amount: totalHarga,
+                  balance_before: currentHutang,
+                  balance_after: newHutang,
+                  payment_method: "Hutang",
+                  note: `Order confirmed: ${order.id}`,
                })
             );
 
@@ -212,17 +237,12 @@ export default function OrderSiswaPage() {
          setActionLoading(true);
          try {
             const operations = [];
-            operations.push(supabase.from("order_siswa").update({ ...updates, status_pembayaran: "Lunas" }).eq("id", order.id));
-
-            // Create transaksi entry for tunai confirmation
+            operations.push(supabase.from("transaksi").update({ ...updates, payment_status: "Lunas" }).eq("id", order.id));
             operations.push(
-               supabase.from("transaksi").insert({
-                  id: `trx_tunai_${Date.now()}`,
-                  nis_siswa: order.siswa.nis,
-                  total_bayar: totalHarga,
-                  metode_pembayaran: "Tunai",
-                  status_pembayaran: "Lunas",
-               })
+               supabase
+                  .from("order_siswa")
+                  .update({ status_order: "Dikonfirmasi", status_pembayaran: "Lunas" })
+                  .eq("id", order.id)
             );
 
             const results = await Promise.all(operations);
@@ -255,13 +275,12 @@ export default function OrderSiswaPage() {
       setErrorMessage("");
       try {
          const totalHarga = Number(order.total_harga ?? 0);
-         const shouldRefundSaldo = order.metode_pembayaran === "Saldo" && order.status_pembayaran === "Lunas";
-         const shouldReduceHutang = order.status_order === "Dikonfirmasi" && order.metode_pembayaran === "Hutang" && order.status_pembayaran === "Belum Lunas";
-         const isHutangPending = order.metode_pembayaran === "Hutang" && order.status_order === "Menunggu";
+         const shouldRefundSaldo = order.metode_pembayaran === "Saldo" && order.payment_status === "Lunas";
+         const shouldReduceHutang = order.order_status === "Dikonfirmasi" && order.metode_pembayaran === "Hutang" && order.payment_status === "Belum Lunas";
+         const isHutangPending = order.metode_pembayaran === "Hutang" && order.order_status === "Menunggu";
 
          const updates = {
-            status_order: "Ditolak",
-            status_pembayaran: order.status_pembayaran === "Lunas" ? "Lunas" : "Belum Lunas",
+            order_status: "Ditolak",
          };
 
          const operations = [];
@@ -270,14 +289,18 @@ export default function OrderSiswaPage() {
             const newSaldo = Number(order.siswa.saldo ?? 0) + totalHarga;
             operations.push(supabase.from("siswa").update({ saldo: newSaldo }).eq("nis", order.siswa.nis));
 
-            // Create saldo history entry for refund
+            // Create saldo_log entry for refund
             operations.push(
-               supabase.from("topup_saldo").insert({
+               supabase.from("saldo_log").insert({
+                  customer_type: "siswa",
                   nis_siswa: order.siswa.nis,
-                  jumlah: totalHarga,
-                  metode: "Refund",
-                  tipe: "Refund",
-                  keterangan: `Refund order ditolak ${order.id}`,
+                  transaksi_id: order.id,
+                  log_type: "Refund",
+                  amount: totalHarga,
+                  balance_before: Number(order.siswa.saldo ?? 0),
+                  balance_after: newSaldo,
+                  payment_method: "Saldo",
+                  note: `Refund order ditolak ${order.id}`,
                })
             );
          }
@@ -287,7 +310,14 @@ export default function OrderSiswaPage() {
             operations.push(supabase.from("siswa").update({ total_hutang: newHutang }).eq("nis", order.siswa.nis));
          }
 
-         operations.push(supabase.from("order_siswa").update(updates).eq("id", order.id));
+         operations.push(supabase.from("transaksi").update(updates).eq("id", order.id));
+
+         operations.push(
+            supabase
+               .from("order_siswa")
+               .update({ status_order: "Ditolak" })
+               .eq("id", order.id)
+         );
 
          if (operations.length > 0) {
             const results = await Promise.all(operations);

@@ -6,10 +6,7 @@ import { clearAuthSession, getAuthSession, getRedirectRouteByRole } from "@/util
 
 export function useRequireAuth(requiredRole) {
   const router = useRouter();
-  const [loading, setLoading] = useState(() => {
-    const session = getAuthSession();
-    return !(session && session.role === requiredRole);
-  });
+  const [checked, setChecked] = useState(false);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -31,19 +28,23 @@ export function useRequireAuth(requiredRole) {
       return;
     }
 
-    if (session.role === requiredRole) {
+    if (session.role !== requiredRole) {
+      const redirectPath = getRedirectRouteByRole(session.role);
+      if (redirectPath) {
+        router.replace(redirectPath);
+        return;
+      }
+
+      clearAuthSession();
+      router.replace("/");
       return;
     }
 
-    const redirectPath = getRedirectRouteByRole(session.role);
-    if (redirectPath) {
-      router.replace(redirectPath);
-      return;
-    }
-
-    clearAuthSession();
-    router.replace("/");
+    // Auth is confirmed on the client. We intentionally set mounted state here
+    // so the initial server render stays consistent and avoids hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setChecked(true);
   }, [requiredRole, router]);
 
-  return { loading, handleLogout };
+  return { loading: !checked, handleLogout };
 }

@@ -17,8 +17,6 @@ export async function POST(req) {
       userType === "siswa" ? "detail_order_siswa" : "detail_order_guru";
     const tableUser = userType === "siswa" ? "siswa" : "guru";
     const userId_column = userType === "siswa" ? "nis" : "nip";
-    const saldoLogTable =
-      userType === "siswa" ? "topup_saldo" : "topup_saldo_guru";
 
     // Get order
     const { data: order, error: orderError } = await supabase
@@ -46,18 +44,19 @@ export async function POST(req) {
         .single();
 
       const newSaldo = (userData?.saldo ?? 0) + order.total_harga;
-      await supabase
-        .from(tableUser)
-        .update({ saldo: newSaldo })
-        .eq(userId_column, userId);
+      await supabase.from(tableUser).update({ saldo: newSaldo }).eq(userId_column, userId);
 
-      // Log refund transaction
-      await supabase.from(saldoLogTable).insert({
-        [userId_column]: userId,
-        jumlah: order.total_harga,
-        metode: "Order",
-        tipe: "Refund",
-        keterangan: `Order ${orderId} - ditolak, saldo dikembalikan`,
+      // Log refund transaction in unified saldo_log
+      await supabase.from("saldo_log").insert({
+        customer_type: userType,
+        [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+        transaksi_id: null,
+        log_type: "Refund",
+        amount: order.total_harga,
+        balance_before: userData?.saldo ?? 0,
+        balance_after: newSaldo,
+        payment_method: "Saldo",
+        note: `Order ${orderId} - ditolak, saldo dikembalikan`,
       });
     }
 

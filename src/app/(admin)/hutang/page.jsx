@@ -92,14 +92,19 @@ export default function BukuHutangPage() {
          const trxId = `trx_${Date.now()}`;
          const insertData = {
             id: trxId,
-            metode_pembayaran: "Pelunasan",
-            status_pembayaran: amount >= Number(selectedEntry.total_hutang) ? "Lunas" : "Belum Lunas",
-            total_bayar: amount,
+            transaction_type: "hutang_payment",
+            payment_method: "Pelunasan",
+            payment_status: amount >= Number(selectedEntry.total_hutang) ? "Lunas" : "Belum Lunas",
+            amount_total: amount,
+            amount_paid: amount,
+            amount_due: 0,
          };
 
          if (selectedEntry.type === "siswa") {
+            insertData.customer_type = "siswa";
             insertData.nis_siswa = selectedEntry.nis;
          } else {
+            insertData.customer_type = "guru";
             insertData.nip_guru = selectedEntry.nip;
          }
 

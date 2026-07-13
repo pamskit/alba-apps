@@ -1,0 +1,71 @@
+.history-table-wrap {
+   overflow-x: auto;
+   border: 1px solid #e2e8f0;
+   border-radius: 14px;
+   background: #fff;
+}
+
+.history-table {
+   width: 100%;
+   border-collapse: collapse;
+}
+
+.history-table th,
+.history-table td {
+   padding: 14px 16px;
+   text-align: left;
+   border-bottom: 1px solid #f3f4f6;
+}
+
+.history-table th {
+   background: #f8fafc;
+   color: #475569;
+   font-weight: 700;
+}
+
+.history-table tr:last-child td {
+   border-bottom: none;
+}
+
+.status-badge {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   border-radius: 999px;
+   padding: 0.28rem 0.7rem;
+   font-size: 0.8rem;
+   font-weight: 700;
+   white-space: nowrap;
+}
+
+.status-badge--positive,
+.history-badge--in {
+   background: #dcfce7;
+   color: #166534;
+}
+
+.status-badge--negative,
+.history-badge--out {
+   background: #fee2e2;
+   color: #b91c1c;
+}
+
+.status-pending {
+   background-color: #fef3c7;
+   color: #92400e;
+}
+
+.status-confirmed {
+   background-color: #d4edda;
+   color: #155724;
+}
+
+.status-rejected {
+   background-color: #f8d7da;
+   color: #721c24;
+}
+
+.status-unpaid {
+   background-color: #fde68a;
+   color: #92400e;
+}

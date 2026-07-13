@@ -17,8 +17,6 @@ export async function POST(req) {
       userType === "siswa" ? "detail_order_siswa" : "detail_order_guru";
     const tableUser = userType === "siswa" ? "siswa" : "guru";
     const userId_column = userType === "siswa" ? "nis" : "nip";
-    const saldoLogTable =
-      userType === "siswa" ? "topup_saldo" : "topup_saldo_guru";
 
     // Get order
     const { data: order, error: orderError } = await supabase
@@ -74,20 +72,20 @@ export async function POST(req) {
         .eq(userId_column, userId)
         .single();
 
-      const newHutang =
-        (userData?.total_hutang ?? 0) + order.total_harga;
-      await supabase
-        .from(tableUser)
-        .update({ total_hutang: newHutang })
-        .eq(userId_column, userId);
+      const newHutang = (userData?.total_hutang ?? 0) + order.total_harga;
+      await supabase.from(tableUser).update({ total_hutang: newHutang }).eq(userId_column, userId);
 
-      // Log hutang transaction
-      await supabase.from(saldoLogTable).insert({
-        [userId_column]: userId,
-        jumlah: order.total_harga,
-        metode: "Order",
-        tipe: "Hutang_Payment", // This will be used for tracking
-        keterangan: `Order ${orderId} - hutang dikonfirmasi`,
+      // Record a saldo_log entry for traceability (no balance change)
+      await supabase.from("saldo_log").insert({
+        customer_type: userType,
+        [userId_column === "nis" ? "nis_siswa" : "nip_guru"]: userId,
+        transaksi_id: null,
+        log_type: "Hutang_Confirmed",
+        amount: order.total_harga,
+        balance_before: userData?.saldo ?? 0,
+        balance_after: userData?.saldo ?? 0,
+        payment_method: "Hutang",
+        note: `Order ${orderId} - hutang dikonfirmasi`,
       });
     }
     // For Saldo orders, saldo was already deducted when order was created
