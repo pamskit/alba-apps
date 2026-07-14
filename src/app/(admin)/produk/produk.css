@@ -1,35 +1,35 @@
 .produk-page {
    display: flex;
    flex-direction: column;
-   gap: 24px;
+   gap: 32px;
    padding: 24px;
 }
 
 .produk-page__header h1 {
    margin: 0;
-   font-size: 2rem;
+   font-size: 2.25rem;
    font-weight: 800;
 }
 
 .produk-page__subtitle {
-   margin: 8px 0 0;
+   margin: 10px 0 0;
    color: #475569;
-   max-width: 720px;
-   line-height: 1.6;
+   max-width: 760px;
+   line-height: 1.7;
 }
 
 .produk-page__panel {
    background: #ffffff;
    border: 1px solid #e5e7eb;
-   border-radius: 20px;
-   padding: 24px;
-   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+   border-radius: 24px;
+   padding: 28px;
+   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
 }
 
 .produk-form {
    display: grid;
-   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-   gap: 16px;
+   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+   gap: 18px;
    align-items: end;
 }
 
@@ -55,6 +55,12 @@
    background: #f8fafc;
 }
 
+.produk-form__button {
+   grid-column: 1 / -1;
+   justify-self: start;
+   width: auto;
+}
+
 .produk-form__input:focus {
    outline: none;
    border-color: #0ea5a4;
@@ -62,9 +68,10 @@
 }
 
 .produk-form__button {
-   min-height: 44px;
-   padding: 0 20px;
+   min-height: 48px;
+   padding: 0 24px;
    border-radius: 14px;
+   box-shadow: 0 14px 30px rgba(14, 165, 164, 0.14);
 }
 
 .produk-page__table-panel {
@@ -76,50 +83,84 @@
    justify-content: space-between;
    align-items: center;
    gap: 16px;
-   padding: 20px 24px 0;
+   padding: 0;
+   flex-wrap: wrap;
+   border-bottom: 1px solid #e5e7eb;
+   padding-bottom: 20px;
+   margin-bottom: 20px;
+}
+
+
+.produk-table-header h2 {
+   margin: 0;
+   font-size: 1.2rem;
 }
 
 .produk-page__search {
    display: grid;
    gap: 8px;
-   min-width: 280px;
+   min-width: 0;
    flex: 1;
 }
 
 .produk-page__search-input {
    width: 100%;
+   border-radius: 16px;
+   padding: 14px 18px;
 }
 
 .produk-page__summary {
    color: #475569;
    font-size: 0.95rem;
+   white-space: nowrap;
+}
+
+.produk-table-wrap {
+   overflow: auto;
+   border-radius: 18px;
+   border: 1px solid #e5e7eb;
+   box-shadow: 0 14px 35px rgba(15, 23, 42, 0.06);
+   margin-top: 16px;
 }
 
 .produk-table {
    width: 100%;
    border-collapse: collapse;
-   min-width: 680px;
+   min-width: 720px;
 }
 
 .produk-table th,
 .produk-table td {
-   padding: 16px 18px;
-   border-bottom: 1px solid #f3f4f6;
+   padding: 18px 20px;
+   border-bottom: 1px solid #e5e7ef;
 }
 
 .produk-table th {
+   position: sticky;
+   top: 0;
    text-align: left;
    background: #f8fafc;
    color: #475569;
    font-weight: 700;
+   letter-spacing: 0.02em;
+   text-transform: uppercase;
+   z-index: 1;
 }
 
 .produk-table__numeric {
    text-align: right;
 }
 
+.produk-table tbody tr {
+   background: #ffffff;
+}
+
 .produk-table tbody tr:hover {
    background: #f8fafc;
+}
+
+.produk-table tbody tr:nth-child(odd) {
+   background: #fcfdff;
 }
 
 .produk-table__stock-input {
@@ -161,46 +202,56 @@
       flex-direction: column;
       align-items: stretch;
    }
+
+   .produk-page__toolbar {
+      flex-direction: column;
+      align-items: stretch;
+   }
+
+   .produk-page__summary {
+      width: 100%;
+   }
 }
 
 .produk-import {
-   border: 1px solid #e0e0e0;
-   border-radius: 16px;
-   padding: 20px;
-   background: #fff;
-   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-   margin-bottom: 24px;
+   border: 1px solid #e5e7eb;
+   border-radius: 24px;
+   padding: 26px;
+   background: #ffffff;
+   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
+   margin-top: 32px;
 }
 
 .produk-import__header {
    display: flex;
+   flex-direction: column;
    gap: 8px;
-   align-items: baseline;
-   margin-bottom: 16px;
+   margin-bottom: 18px;
 }
 
 .produk-import__header h2 {
    margin: 0;
-   font-size: 1.1rem;
+   font-size: 1.2rem;
 }
 
 .produk-import__controls {
-   display: flex;
-   flex-wrap: wrap;
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(200px, max-content));
    gap: 12px;
    align-items: center;
 }
 
 .produk-import__button {
-   min-height: 44px;
-   padding: 0 18px;
+   min-height: 48px;
+   padding: 0 24px;
+   border-radius: 16px;
 }
 
 .produk-import__success,
 .produk-import__error {
-   margin-top: 16px;
-   padding: 14px 16px;
-   border-radius: 14px;
+   margin-top: 18px;
+   padding: 16px 18px;
+   border-radius: 16px;
    font-size: 0.95rem;
 }
 

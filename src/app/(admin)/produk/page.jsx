@@ -190,7 +190,35 @@ export default function ProdukPage() {
          </div>
 
          <section className="produk-page__panel">
-            <form className="produk-form" onSubmit={handleAddProduct}>
+            <h2>Tambah Produk</h2>
+            <p>Lakukan import produk atau tambahkan produk secara manual</p>
+
+            <div className="produk-import">
+               <div className="produk-import__header">
+                  <h2>Impor Produk CSV</h2>
+                  <p>Unduh template CSV lalu unggah file berisi daftar produk.</p>
+               </div>
+               <div className="produk-import__controls">
+                  <button className="btn btn--secondary produk-import__button" type="button" onClick={downloadCsvTemplate}>
+                     Unduh Template CSV
+                  </button>
+                  <input
+                     type="file"
+                     accept=".csv"
+                     onChange={(e) => {
+                        setCsvFile(e.target.files?.[0] ?? null);
+                        setImportError("");
+                        setImportMessage("");
+                     }}
+                  />
+                  <button className="btn btn--primary produk-import__button" type="button" onClick={handleImportCsv} disabled={importLoading || !csvFile}>
+                     {importLoading ? "Mengimpor..." : "Impor CSV"}
+                  </button>
+               </div>
+               {importMessage && <div className="produk-import__success">{importMessage}</div>}
+               {importError && <div className="produk-import__error">{importError}</div>}
+            </div>
+            <form className="produk-import produk-form" onSubmit={handleAddProduct}>
                <div className="produk-form__group">
                   <label className="produk-form__label" htmlFor="product-name">
                      Nama Produk
@@ -246,37 +274,17 @@ export default function ProdukPage() {
                   Tambah Produk
                </button>
             </form>
+
+
          </section>
 
-         <section className="produk-page__panel produk-page__import-panel">
-            <div className="produk-import">
-               <div className="produk-import__header">
-                  <h2>Impor Produk CSV</h2>
-                  <p>Unduh template CSV lalu unggah file berisi daftar produk.</p>
-               </div>
-               <div className="produk-import__controls">
-                  <button className="btn btn--secondary produk-import__button" type="button" onClick={downloadCsvTemplate}>
-                     Unduh Template CSV
-                  </button>
-                  <input
-                     type="file"
-                     accept=".csv"
-                     onChange={(e) => {
-                        setCsvFile(e.target.files?.[0] ?? null);
-                        setImportError("");
-                        setImportMessage("");
-                     }}
-                  />
-                  <button className="btn btn--primary produk-import__button" type="button" onClick={handleImportCsv} disabled={importLoading || !csvFile}>
-                     {importLoading ? "Mengimpor..." : "Impor CSV"}
-                  </button>
-               </div>
-               {importMessage && <div className="produk-import__success">{importMessage}</div>}
-               {importError && <div className="produk-import__error">{importError}</div>}
+         <section className="produk-import produk-page__panel produk-page__table-panel">
+            <div className="produk-table-header">
+               <h2>Daftar Produk</h2>
+               <p >
+                  Menampilkan {filteredProducts.length} dari {products.length} produk
+               </p>
             </div>
-         </section>
-
-         <section className="produk-page__panel produk-page__table-panel">
             <div className="produk-page__toolbar">
                <div className="produk-page__search">
                   <label htmlFor="produk-search" className="produk-form__label">
@@ -291,91 +299,90 @@ export default function ProdukPage() {
                      onChange={(e) => setSearchQuery(e.target.value)}
                   />
                </div>
-               <div className="produk-page__summary">
-                  Menampilkan {filteredProducts.length} dari {products.length} produk
-               </div>
             </div>
 
             {loading && <Loading message="Memuat produk..." size="small" />}
 
-            <table className="produk-table">
-               <thead>
-                  <tr>
-                     <th>Nama Produk</th>
-                     <th>Harga Beli</th>
-                     <th>Harga Jual</th>
-                     <th>Stok</th>
-                     <th>Aksi</th>
-                  </tr>
-               </thead>
-               <tbody>
-                  {filteredProducts.map((p) => (
-                     <tr key={p.id}>
-                        <td>{p.nama_produk}</td>
-                        <td className="produk-table__numeric">Rp {Number(p.harga_beli ?? 0).toLocaleString()}</td>
-                        <td className="produk-table__numeric">Rp {Number(p.harga_jual ?? 0).toLocaleString()}</td>
-                        <td className="produk-table__numeric">
-                           {editingId === p.id ? (
-                              <input
-                                 className="produk-table__stock-input"
-                                 type="number"
-                                 value={editStockValue}
-                                 onChange={(e) => setEditStockValue(e.target.value)}
-                              />
-                           ) : (
-                              p.stok ?? 0
-                           )}
-                        </td>
-                        <td>
-                           <div className="produk-actions">
-                              {editingId === p.id ? (
-                                 <>
-                                    <button className="btn btn--primary produk-actions__button" onClick={() => saveStock(p.id)} disabled={loading}>
-                                       Simpan
-                                    </button>
-                                    <button className="btn produk-actions__button" onClick={() => setEditingId(null)}>
-                                       Batal
-                                    </button>
-                                 </>
-                              ) : (
-                                 <>
-                                    <button className="btn produk-actions__button" onClick={() => startEdit(p)}>
-                                       Edit Stok
-                                    </button>
-                                    <button
-                                       className="btn produk-actions__button btn--danger"
-                                       onClick={async () => {
-                                          if (!confirm(`Hapus produk ${p.nama_produk}?`)) return;
-                                          setLoading(true);
-                                          try {
-                                             const { error } = await supabase.from("produk").delete().eq("id", p.id);
-                                             if (error) throw error;
-                                             await fetchProducts();
-                                          } catch (err) {
-                                             console.error(err);
-                                             toast.error("Gagal menghapus produk");
-                                          } finally {
-                                             setLoading(false);
-                                          }
-                                       }}
-                                    >
-                                       Hapus
-                                    </button>
-                                 </>
-                              )}
-                           </div>
-                        </td>
-                     </tr>
-                  ))}
-                  {filteredProducts.length === 0 && !loading && (
+            <div className="produk-table-wrap">
+               <table className="produk-table">
+                  <thead>
                      <tr>
-                        <td colSpan={5} className="produk-table__empty">
-                           Tidak ada produk yang cocok.
-                        </td>
+                        <th>Nama Produk</th>
+                        <th>Harga Beli</th>
+                        <th>Harga Jual</th>
+                        <th>Stok</th>
+                        <th>Aksi</th>
                      </tr>
-                  )}
-               </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                     {filteredProducts.map((p) => (
+                        <tr key={p.id}>
+                           <td>{p.nama_produk}</td>
+                           <td className="produk-table__numeric">Rp {Number(p.harga_beli ?? 0).toLocaleString()}</td>
+                           <td className="produk-table__numeric">Rp {Number(p.harga_jual ?? 0).toLocaleString()}</td>
+                           <td className="produk-table__numeric">
+                              {editingId === p.id ? (
+                                 <input
+                                    className="produk-table__stock-input"
+                                    type="number"
+                                    value={editStockValue}
+                                    onChange={(e) => setEditStockValue(e.target.value)}
+                                 />
+                              ) : (
+                                 p.stok ?? 0
+                              )}
+                           </td>
+                           <td>
+                              <div className="produk-actions">
+                                 {editingId === p.id ? (
+                                    <>
+                                       <button className="btn btn--primary produk-actions__button" onClick={() => saveStock(p.id)} disabled={loading}>
+                                          Simpan
+                                       </button>
+                                       <button className="btn produk-actions__button" onClick={() => setEditingId(null)}>
+                                          Batal
+                                       </button>
+                                    </>
+                                 ) : (
+                                    <>
+                                       <button className="btn produk-actions__button" onClick={() => startEdit(p)}>
+                                          Edit Stok
+                                       </button>
+                                       <button
+                                          className="btn produk-actions__button btn--danger"
+                                          onClick={async () => {
+                                             if (!confirm(`Hapus produk ${p.nama_produk}?`)) return;
+                                             setLoading(true);
+                                             try {
+                                                const { error } = await supabase.from("produk").delete().eq("id", p.id);
+                                                if (error) throw error;
+                                                await fetchProducts();
+                                             } catch (err) {
+                                                console.error(err);
+                                                toast.error("Gagal menghapus produk");
+                                             } finally {
+                                                setLoading(false);
+                                             }
+                                          }}
+                                       >
+                                          Hapus
+                                       </button>
+                                    </>
+                                 )}
+                              </div>
+                           </td>
+                        </tr>
+                     ))}
+                     {filteredProducts.length === 0 && !loading && (
+                        <tr>
+                           <td colSpan={5} className="produk-table__empty">
+                              Tidak ada produk yang cocok.
+                           </td>
+                        </tr>
+                     )}
+                  </tbody>
+               </table>
+            </div>
          </section>
       </div>
    );
