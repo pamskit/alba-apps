@@ -376,8 +376,8 @@ export default function AdminDashboardPage() {
                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
                            <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
                            <Legend />
-                           <Bar dataKey="revenue" name="Omzet" fill="#0f172a" />
-                           <Line type="monotone" dataKey="ma" name="Rata-rata 7 hari" stroke="#ef4444" strokeWidth={2} dot={false} />
+                           <Bar dataKey="revenue" name="Omzet" fill="#08d1d6" />
+                           <Line type="monotone" dataKey="ma" name="Rata-rata 7 hari" stroke="#0e6ec6" strokeWidth={2} dot={false} />
                         </ComposedChart>
                      </ResponsiveContainer>
                   </div>
