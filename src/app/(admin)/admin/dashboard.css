@@ -49,6 +49,48 @@
    font-size: 0.95rem;
 }
 
+/* Period Filter Select */
+.admin-dashboard__period-filter {
+   display: flex;
+   gap: 0.75rem;
+   margin-bottom: 1.5rem;
+}
+
+.admin-dashboard__period-select {
+   padding: 0.55rem 1rem;
+   border-radius: 12px;
+   border: 1px solid rgba(148, 163, 184, 0.3);
+   background: #fff;
+   color: #0f172a;
+   font-size: 0.95rem;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   min-width: 200px;
+   appearance: none;
+   padding-right: 2.5rem;
+   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23666'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+   background-repeat: no-repeat;
+   background-position: right 0.75rem center;
+   background-size: 1.25rem;
+}
+
+.admin-dashboard__period-select:hover:not(:disabled) {
+   border-color: #3b82f6;
+   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-dashboard__period-select:focus {
+   outline: none;
+   border-color: #3b82f6;
+   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-dashboard__period-select:disabled {
+   opacity: 0.6;
+   cursor: not-allowed;
+}
+
 .admin-dashboard__summary-grid {
    display: grid;
    grid-template-columns: repeat(4, minmax(0, 1fr));

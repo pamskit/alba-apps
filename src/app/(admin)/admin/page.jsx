@@ -4,11 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import useDashboardSummary, { PERIOD_OPTIONS } from "@/hooks/useDashboardSummary";
 import "./dashboard.css";
 
 const supabase = createClient();
 
 export default function AdminDashboardPage() {
+   const [period, setPeriod] = useState("1_week");
+   const summary = useDashboardSummary(period);
+
    const [products, setProducts] = useState([]);
    const [transactions, setTransactions] = useState([]);
    const [ordersSiswa, setOrdersSiswa] = useState([]);
@@ -213,32 +217,52 @@ export default function AdminDashboardPage() {
                   <div className="admin-dashboard__section-header">
                      <div>
                         <h2 className="admin-dashboard__section-title">Ringkasan Penjualan</h2>
-                        <p className="admin-dashboard__section-subtitle">Ikhtisar performa penjualan saat ini.</p>
+                        <p className="admin-dashboard__section-subtitle">Ikhtisar performa penjualan: {summary.periodLabel}</p>
                      </div>
                   </div>
 
-                  <div className="admin-dashboard__summary-grid">
-                     <div className="admin-dashboard__summary-card">
-                        <div className="admin-dashboard__summary-label">Omzet</div>
-                        <div className="admin-dashboard__summary-value">{formatCurrency(omzet)}</div>
-                        <div className="admin-dashboard__summary-caption">Hanya penjualan yang sudah lunas / dikonfirmasi</div>
-                     </div>
-                     <div className="admin-dashboard__summary-card">
-                        <div className="admin-dashboard__summary-label">Item Terjual</div>
-                        <div className="admin-dashboard__summary-value">{totalItemsSold}</div>
-                        <div className="admin-dashboard__summary-caption">Jumlah produk yang laku</div>
-                     </div>
-                     <div className="admin-dashboard__summary-card">
-                        <div className="admin-dashboard__summary-label">Transaksi</div>
-                        <div className="admin-dashboard__summary-value">{salesTimeline.length}</div>
-                        <div className="admin-dashboard__summary-caption">Gabungan transaksi kasir dan order</div>
-                     </div>
-                     <div className="admin-dashboard__summary-card">
-                        <div className="admin-dashboard__summary-label">Rata-rata Per Transaksi</div>
-                        <div className="admin-dashboard__summary-value">{formatCurrency(avgOrderValue)}</div>
-                        <div className="admin-dashboard__summary-caption">Nilai rata-rata setiap penjualan</div>
-                     </div>
+                  {/* Period Filter Select */}
+                  <div className="admin-dashboard__period-filter">
+                     <select
+                        className="admin-dashboard__period-select"
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        disabled={summary.loading}
+                     >
+                        {Object.entries(PERIOD_OPTIONS).map(([key, config]) => (
+                           <option key={key} value={key}>
+                              {config.label}
+                           </option>
+                        ))}
+                     </select>
                   </div>
+
+                  {summary.loading ? (
+                     <Loading message="Memuat ringkasan..." size="small" />
+                  ) : (
+                     <div className="admin-dashboard__summary-grid">
+                        <div className="admin-dashboard__summary-card">
+                           <div className="admin-dashboard__summary-label">Omzet</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.omzet)}</div>
+                           <div className="admin-dashboard__summary-caption">Total pendapatan yang sudah lunas / dikonfirmasi</div>
+                        </div>
+                        <div className="admin-dashboard__summary-card">
+                           <div className="admin-dashboard__summary-label">Item Terjual</div>
+                           <div className="admin-dashboard__summary-value">{summary.itemTerjual}</div>
+                           <div className="admin-dashboard__summary-caption">Total quantity produk yang terjual</div>
+                        </div>
+                        <div className="admin-dashboard__summary-card">
+                           <div className="admin-dashboard__summary-label">Transaksi</div>
+                           <div className="admin-dashboard__summary-value">{summary.totalTransaksi}</div>
+                           <div className="admin-dashboard__summary-caption">Jumlah pesanan yang berhasil dikonfirmasi</div>
+                        </div>
+                        <div className="admin-dashboard__summary-card">
+                           <div className="admin-dashboard__summary-label">Laba Kotor</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.labaKotor)}</div>
+                           <div className="admin-dashboard__summary-caption">Omzet dikurangi harga pokok barang</div>
+                        </div>
+                     </div>
+                  )}
                </section>
 
                <section className="admin-dashboard__section">
@@ -317,21 +341,21 @@ export default function AdminDashboardPage() {
                      <div className="admin-dashboard__section-header">
                         <div>
                            <h2 className="admin-dashboard__section-title">Pendapatan</h2>
-                           <p className="admin-dashboard__section-subtitle">Estimasi keuntungan dari penjualan.</p>
+                           <p className="admin-dashboard__section-subtitle">Estimasi keuntungan dari penjualan ({summary.periodLabel}).</p>
                         </div>
                      </div>
                      <div className="admin-dashboard__income-grid">
                         <div className="admin-dashboard__income-card">
                            <div className="admin-dashboard__summary-label">Omzet</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(omzet)}</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.omzet)}</div>
                         </div>
                         <div className="admin-dashboard__income-card">
                            <div className="admin-dashboard__summary-label">Laba Kotor</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(labaKotor)}</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.labaKotor)}</div>
                         </div>
                         <div className="admin-dashboard__income-card">
                            <div className="admin-dashboard__summary-label">Estimasi Laba Bersih</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(estimasiLabaBersih)}</div>
+                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.estimasiLabaBersih)}</div>
                         </div>
                      </div>
                   </div>
