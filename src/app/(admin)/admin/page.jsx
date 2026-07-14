@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, ComposedChart, Bar } from "recharts";
 import useDashboardSummary, { PERIOD_OPTIONS } from "@/hooks/useDashboardSummary";
 import "./dashboard.css";
 
@@ -26,13 +26,46 @@ export default function AdminDashboardPage() {
       const loadMetrics = async () => {
          setLoading(true);
          try {
+            const now = new Date();
+            let startDate;
+
+            if (period === "1_week") {
+               startDate = new Date(now);
+               startDate.setDate(now.getDate() - 6);
+            } else if (period === "1_month") {
+               startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else if (period === "1_year") {
+               startDate = new Date(now);
+               startDate.setDate(now.getDate() - 364);
+            } else {
+               startDate = new Date(now);
+            }
+            startDate.setHours(0, 0, 0, 0);
+            const startISO = startDate.toISOString();
+            const endISO = now.toISOString();
+
             const [{ data: produkData }, { data: transaksiData }, { data: detailTransaksiData }, { data: orderSiswaData }, { data: detailOrderSiswaData }, { data: orderGuruData }, { data: detailOrderGuruData }] = await Promise.all([
                supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
-               supabase.from("transaksi").select("id,amount_total,amount_paid,payment_method,payment_status,created_at,nis_siswa,nip_guru").order("created_at", { ascending: false }).limit(12),
+               supabase
+                  .from("transaksi")
+                  .select("id,transaction_type,amount_total,amount_paid,payment_method,payment_status,created_at,nis_siswa,nip_guru")
+                  .gte("created_at", startISO)
+                  .lte("created_at", endISO)
+                  .order("created_at", { ascending: false }),
                supabase.from("detail_transaksi").select("transaksi_id,produk_id,jumlah"),
-               supabase.from("order_siswa").select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nis_siswa").order("created_at", { ascending: false }),
+               supabase
+                  .from("order_siswa")
+                  .select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nis_siswa")
+                  .gte("created_at", startISO)
+                  .lte("created_at", endISO)
+                  .order("created_at", { ascending: false }),
                supabase.from("detail_order_siswa").select("order_id,produk_id,jumlah,harga_satuan"),
-               supabase.from("order_guru").select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nip_guru").order("created_at", { ascending: false }),
+               supabase
+                  .from("order_guru")
+                  .select("id,total_harga,metode_pembayaran,status_order,status_pembayaran,created_at,nip_guru")
+                  .gte("created_at", startISO)
+                  .lte("created_at", endISO)
+                  .order("created_at", { ascending: false }),
                supabase.from("detail_order_guru").select("order_id,produk_id,jumlah,harga_satuan"),
             ]);
 
@@ -51,10 +84,11 @@ export default function AdminDashboardPage() {
       };
 
       void loadMetrics();
-   }, []);
+   }, [period]);
 
    const validTransactions = useMemo(() => {
-      return (transactions ?? []).filter((item) => item.payment_status === "Lunas");
+      // Exclude debt-payment transactions from revenue/chart calculations
+      return (transactions ?? []).filter((item) => item.payment_status === "Lunas" && item.transaction_type !== "hutang_payment");
    }, [transactions]);
 
    const confirmedOrders = useMemo(() => {
@@ -94,28 +128,90 @@ export default function AdminDashboardPage() {
    }, [validTransactions, confirmedOrders]);
 
    const salesChartData = useMemo(() => {
-      const lastSevenDays = Array.from({ length: 7 }, (_, index) => {
-         const date = new Date();
-         date.setDate(date.getDate() - (6 - index));
-         date.setHours(0, 0, 0, 0);
-         return {
-            label: date.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
-            key: date.toISOString().slice(0, 10),
-            revenue: 0,
-            count: 0,
-         };
-      });
+      // build chart data based on selected period
+      const now = new Date();
+      let startDate;
+
+      if (period === "1_week") {
+         startDate = new Date(now);
+         startDate.setDate(now.getDate() - 6);
+      } else if (period === "1_month") {
+         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (period === "1_year") {
+         startDate = new Date(now);
+         startDate.setDate(now.getDate() - 364);
+      } else {
+         startDate = new Date(now);
+      }
+      startDate.setHours(0, 0, 0, 0);
+
+      const map = new Map();
+      const toKey = (d) => {
+         const date = new Date(d);
+         const y = date.getFullYear();
+         const m = String(date.getMonth() + 1).padStart(2, "0");
+         const dd = String(date.getDate()).padStart(2, "0");
+         if (period === "1_year") {
+            return `${y}-${m}`;
+         }
+         return `${y}-${m}-${dd}`;
+      };
+
+      const toLabel = (key) => {
+         if (period === "1_year") {
+            const [y, m] = key.split("-");
+            const date = new Date(Number(y), Number(m) - 1, 1);
+            return date.toLocaleString("id-ID", { month: "short", year: "numeric" });
+         }
+         const date = new Date(key);
+         return date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+      };
+
+      // Initialize continuous timeline keys
+      const keys = [];
+      if (period === "1_year") {
+         const s = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+         const e = new Date(now.getFullYear(), now.getMonth(), 1);
+         while (s <= e) {
+            const key = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}`;
+            keys.push(key);
+            s.setMonth(s.getMonth() + 1);
+         }
+      } else {
+         const s = new Date(startDate);
+         const e = new Date(now);
+         while (s <= e) {
+            const key = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}-${String(s.getDate()).padStart(2, "0")}`;
+            keys.push(key);
+            s.setDate(s.getDate() + 1);
+         }
+      }
+
+      keys.forEach((k) => map.set(k, { label: toLabel(k), key: k, revenue: 0, count: 0 }));
 
       salesTimeline.forEach((entry) => {
-         const key = new Date(entry.created_at).toISOString().slice(0, 10);
-         const row = lastSevenDays.find((item) => item.key === key);
+         const created = new Date(entry.created_at);
+         if (created < startDate) return;
+         const key = toKey(created);
+         const row = map.get(key);
          if (row) {
             row.revenue += Number(entry.amount || 0);
             row.count += 1;
          }
       });
 
-      return lastSevenDays;
+      const data = Array.from(map.values());
+
+      // compute 7-day moving average (or appropriate window)
+      const window = 7;
+      for (let i = 0; i < data.length; i++) {
+         const start = Math.max(0, i - (window - 1));
+         const slice = data.slice(start, i + 1);
+         const sum = slice.reduce((s, v) => s + Number(v.revenue || 0), 0);
+         data[i].ma = Math.round(sum / slice.length);
+      }
+
+      return data;
    }, [salesTimeline]);
 
    const totalItemsSold = useMemo(() => {
@@ -168,7 +264,7 @@ export default function AdminDashboardPage() {
             .forEach((item) => addItem(item, Number(item.harga_satuan || 0)));
       });
 
-      return [...map.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+      return [...map.values()].sort((a, b) => b.qty - a.qty).slice(0, 7);
    }, [products, validDetailTransactions, confirmedOrders, detailOrdersSiswa, detailOrdersGuru]);
 
    const lowStockProducts = useMemo(() => {
@@ -195,7 +291,7 @@ export default function AdminDashboardPage() {
          })),
       ];
 
-      return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 8);
+      return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 7);
    }, [validTransactions, confirmedOrders]);
 
    const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
@@ -274,14 +370,15 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="admin-dashboard__chart-wrap">
                      <ResponsiveContainer width="100%" height={320}>
-                        <LineChart data={salesChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <ComposedChart data={salesChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
                            <XAxis dataKey="label" axisLine={false} tickLine={false} />
                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
                            <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString("id-ID")}`} />
                            <Legend />
-                           <Line type="monotone" dataKey="revenue" name="Pendapatan" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
-                        </LineChart>
+                           <Bar dataKey="revenue" name="Omzet" fill="#0f172a" />
+                           <Line type="monotone" dataKey="ma" name="Rata-rata 7 hari" stroke="#ef4444" strokeWidth={2} dot={false} />
+                        </ComposedChart>
                      </ResponsiveContainer>
                   </div>
                </section>
@@ -291,7 +388,7 @@ export default function AdminDashboardPage() {
                      <div className="admin-dashboard__section-header">
                         <div>
                            <h2 className="admin-dashboard__section-title">Produk Terlaris</h2>
-                           <p className="admin-dashboard__section-subtitle">Produk dengan penjualan terbanyak.</p>
+                           <p className="admin-dashboard__section-subtitle">Produk dengan penjualan terbanyak selama {summary.periodLabel}.</p>
                         </div>
                      </div>
                      <div className="admin-dashboard__list">
@@ -308,55 +405,6 @@ export default function AdminDashboardPage() {
                               </div>
                            ))
                         )}
-                     </div>
-                  </div>
-
-                  <div className="admin-dashboard__panel">
-                     <div className="admin-dashboard__section-header">
-                        <div>
-                           <h2 className="admin-dashboard__section-title">Produk Hampir Habis</h2>
-                           <p className="admin-dashboard__section-subtitle">Stok tersisa 5 item atau kurang.</p>
-                        </div>
-                     </div>
-                     <div className="admin-dashboard__list">
-                        {lowStockProducts.length === 0 ? (
-                           <div className="admin-dashboard__empty">Semua produk masih aman.</div>
-                        ) : (
-                           lowStockProducts.map((product) => (
-                              <div key={product.id} className="admin-dashboard__list-item">
-                                 <div>
-                                    <div className="admin-dashboard__list-title">{product.nama_produk}</div>
-                                    <div className="admin-dashboard__list-meta">Sisa stok: {product.stok}</div>
-                                 </div>
-                                 <span className="admin-dashboard__pill">Segera isi</span>
-                              </div>
-                           ))
-                        )}
-                     </div>
-                  </div>
-               </section>
-
-               <section className="admin-dashboard__section admin-dashboard__section--split">
-                  <div className="admin-dashboard__panel">
-                     <div className="admin-dashboard__section-header">
-                        <div>
-                           <h2 className="admin-dashboard__section-title">Pendapatan</h2>
-                           <p className="admin-dashboard__section-subtitle">Estimasi keuntungan dari penjualan ({summary.periodLabel}).</p>
-                        </div>
-                     </div>
-                     <div className="admin-dashboard__income-grid">
-                        <div className="admin-dashboard__income-card">
-                           <div className="admin-dashboard__summary-label">Omzet</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.omzet)}</div>
-                        </div>
-                        <div className="admin-dashboard__income-card">
-                           <div className="admin-dashboard__summary-label">Laba Kotor</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.labaKotor)}</div>
-                        </div>
-                        <div className="admin-dashboard__income-card">
-                           <div className="admin-dashboard__summary-label">Estimasi Laba Bersih</div>
-                           <div className="admin-dashboard__summary-value">{formatCurrency(summary.estimasiLabaBersih)}</div>
-                        </div>
                      </div>
                   </div>
 

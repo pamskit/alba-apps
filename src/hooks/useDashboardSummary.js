@@ -22,11 +22,6 @@ export const PERIOD_OPTIONS = {
     days: 365,
     key: '1_year',
   },
-  all_time: {
-    label: 'Semua Waktu',
-    days: null,
-    key: 'all_time',
-  },
 };
 
 /**
@@ -40,7 +35,7 @@ export const PERIOD_OPTIONS = {
  * 
  * Supports multiple period filters with automatic date range calculation
  * 
- * @param {string} period - One of: '1_week', '1_month', '1_year', 'all_time'
+ * @param {string} period - One of: '1_week', '1_month', '1_year'
  * @returns {Object} Summary data: { omzet, itemTerjual, totalTransaksi, labaKotor, loading, error }
  */
 export default function useDashboardSummary(period = '1_week') {
@@ -60,11 +55,6 @@ export default function useDashboardSummary(period = '1_week') {
   const dateRange = useMemo(() => {
     const now = new Date();
     const config = PERIOD_OPTIONS[period];
-
-    if (!config.days) {
-      // all_time: no filter
-      return { start: null, end: now };
-    }
 
     const start = new Date();
     start.setDate(start.getDate() - config.days);
@@ -87,13 +77,10 @@ export default function useDashboardSummary(period = '1_week') {
         let orderGuruQuery = supabase.from('order_guru').select('id,total_harga,status_order,created_at,nip_guru');
         let detailOrderGuruQuery = supabase.from('detail_order_guru').select('order_id,produk_id,jumlah,harga_satuan');
 
-        // Apply date filters if not all_time
-        if (dateRange.start) {
-          const startISO = dateRange.start.toISOString();
-          transactionQuery = transactionQuery.gte('created_at', startISO);
-          orderSiswaQuery = orderSiswaQuery.gte('created_at', startISO);
-          orderGuruQuery = orderGuruQuery.gte('created_at', startISO);
-        }
+        const startISO = dateRange.start.toISOString();
+        transactionQuery = transactionQuery.gte('created_at', startISO);
+        orderSiswaQuery = orderSiswaQuery.gte('created_at', startISO);
+        orderGuruQuery = orderGuruQuery.gte('created_at', startISO);
 
         // Fetch products separately (no date filter needed)
         const [
@@ -140,7 +127,8 @@ export default function useDashboardSummary(period = '1_week') {
    * Filter only "Lunas" transactions from transaksi table
    */
   const validTransactions = useMemo(() => {
-    return (transactions ?? []).filter((item) => item.payment_status === 'Lunas');
+    // Exclude debt payment transactions from omzet calculation.
+    return (transactions ?? []).filter((item) => item.payment_status === 'Lunas' && item.transaction_type !== 'hutang_payment');
   }, [transactions]);
 
   /**

@@ -10,6 +10,7 @@ const supabase = createClient();
 
 const FILTER_OPTIONS = {
    today: "Hari Ini",
+   week: "1 Minggu Terakhir",
    month: "Bulan Ini",
 };
 
@@ -20,8 +21,8 @@ const formatDate = (value) => {
    return new Date(value).toLocaleString("id-ID");
 };
 
-const isValidTransaction = (item) => item.payment_status === "Lunas";
-const isValidOrder = (item) => item.status_order === "Dikonfirmasi" && item.status_pembayaran === "Lunas";
+const isValidTransaction = (item) => item.payment_status === "Lunas" && item.transaction_type !== "hutang_payment";
+const isValidOrder = (item) => item.status_order === "Dikonfirmasi";
 
 export default function LaporanPage() {
    const [filter, setFilter] = useState("today");
@@ -43,6 +44,9 @@ export default function LaporanPage() {
 
             if (filter === "month") {
                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else if (filter === "week") {
+               startDate.setDate(now.getDate() - 6);
+               startDate.setHours(0, 0, 0, 0);
             } else {
                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
@@ -54,7 +58,7 @@ export default function LaporanPage() {
                supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
                supabase
                   .from("transaksi")
-                  .select("id, nis_siswa, nip_guru, payment_method, payment_status, amount_total, created_at")
+                  .select("id,transaction_type, nis_siswa, nip_guru, payment_method, payment_status, amount_total, created_at")
                   .gte("created_at", start)
                   .lte("created_at", end)
                   .order("created_at", { ascending: false }),
@@ -204,6 +208,8 @@ export default function LaporanPage() {
       const totalRevenue = salesRows.reduce((sum, item) => sum + Number(item.total || 0), 0);
       const totalModal = productSalesRows.reduce((sum, item) => sum + Number(item.modal || 0), 0);
       const totalLaba = productSalesRows.reduce((sum, item) => sum + Number(item.laba || 0), 0);
+      const totalItemsSold = productSalesRows.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      const totalTransactions = salesRows.length;
       const totalStok = (products ?? []).reduce((sum, item) => sum + Number(item.stok || 0), 0);
       const stockValue = (products ?? []).reduce((sum, item) => sum + Number(item.stok || 0) * Number(item.harga_beli || 0), 0);
       const outOfStockProducts = (products ?? []).filter((item) => Number(item.stok || 0) <= 0);
@@ -212,9 +218,13 @@ export default function LaporanPage() {
       return {
          salesRows,
          productSalesRows,
+         omzet: totalRevenue,
          totalRevenue,
          totalModal,
+         labaKotor: totalLaba,
          totalLaba,
+         itemTerjual: totalItemsSold,
+         totalTransactions,
          totalStok,
          stockValue,
          outOfStockProducts,
@@ -224,7 +234,7 @@ export default function LaporanPage() {
 
    function exportReportToCsv() {
       const now = new Date();
-      const periodLabel = filter === "month" ? "bulan_ini" : "hari_ini";
+      const periodLabel = filter === "month" ? "bulan_ini" : filter === "week" ? "minggu_ini" : "hari_ini";
       const rows = [];
 
       rows.push(["LAPORAN KOPERASI"]);
@@ -236,11 +246,14 @@ export default function LaporanPage() {
       rows.push([]);
       rows.push(["RINGKASAN"]);
       rows.push(["Item", "Nilai"]);
-      rows.push(["Total Penjualan", formatCurrency(reportData.totalRevenue)]);
-      rows.push(["Total Modal", formatCurrency(reportData.totalModal)]);
-      rows.push(["Total Laba", formatCurrency(reportData.totalLaba)]);
+      rows.push(["Omzet", formatCurrency(reportData.omzet)]);
+      rows.push(["Item Terjual", reportData.itemTerjual]);
+      rows.push(["Jumlah Transaksi", reportData.totalTransactions]);
+      rows.push(["Laba Kotor", formatCurrency(reportData.labaKotor)]);
       rows.push(["Total Stok Unit", reportData.totalStok]);
       rows.push(["Nilai Stok", formatCurrency(reportData.stockValue)]);
+      rows.push(["Produk Kosong", reportData.outOfStockProducts.length]);
+      rows.push(["Produk Menipis", reportData.lowStockProducts.length]);
       rows.push([]);
       rows.push(["LAPORAN PENJUALAN"]);
       rows.push(["Tanggal", "Jenis", "Pelanggan", "Metode", "Status", "Total"]);
@@ -249,7 +262,7 @@ export default function LaporanPage() {
       });
       rows.push([]);
       rows.push(["LAPORAN PRODUK TERJUAL"]);
-      rows.push(["Produk", "Jumlah Terjual", "Pendapatan", "Modal", "Laba"]);
+      rows.push(["Produk", "Qty Terjual", "Pendapatan", "Modal", "Laba"]);
       reportData.productSalesRows.forEach((item) => {
          rows.push([item.name, item.qty, formatCurrency(item.revenue), formatCurrency(item.modal), formatCurrency(item.laba)]);
       });
@@ -264,18 +277,12 @@ export default function LaporanPage() {
          rows.push([item.nama_produk, stok, formatCurrency(item.harga_beli || 0), formatCurrency(item.harga_jual || 0), status]);
       });
       rows.push([]);
-      rows.push(["LAPORAN PEMBELIAN (MODAL)"]);
-      rows.push(["Produk", "Jumlah Terjual", "Harga Beli", "Total Modal"]);
-      reportData.productSalesRows.forEach((item) => {
-         rows.push([item.name, item.qty, formatCurrency(item.modal / Math.max(item.qty, 1)), formatCurrency(item.modal)]);
-      });
-      rows.push([]);
       rows.push(["LAPORAN LABA"]);
       rows.push(["Jenis", "Nilai"]);
-      rows.push(["Pendapatan", formatCurrency(reportData.totalRevenue)]);
+      rows.push(["Omzet", formatCurrency(reportData.omzet)]);
       rows.push(["Modal", formatCurrency(reportData.totalModal)]);
-      rows.push(["Laba Kotor", formatCurrency(reportData.totalLaba)]);
-      rows.push(["Margin", `${reportData.totalRevenue > 0 ? ((reportData.totalLaba / reportData.totalRevenue) * 100).toFixed(1) : 0}%`]);
+      rows.push(["Laba Kotor", formatCurrency(reportData.labaKotor)]);
+      rows.push(["Margin", `${reportData.omzet > 0 ? ((reportData.labaKotor / reportData.omzet) * 100).toFixed(1) : 0}%`]);
 
       const csvContent = rows
          .map((row) =>
@@ -328,9 +335,9 @@ export default function LaporanPage() {
             .join("");
 
       const summaryRows = [
-         ["Total Penjualan", formatCurrency(reportData.totalRevenue)],
+         ["Omzet", formatCurrency(reportData.omzet)],
          ["Total Modal", formatCurrency(reportData.totalModal)],
-         ["Total Laba", formatCurrency(reportData.totalLaba)],
+         ["Laba Kotor", formatCurrency(reportData.labaKotor)],
          ["Total Stok Unit", reportData.totalStok],
          ["Nilai Stok", formatCurrency(reportData.stockValue)],
       ];
@@ -360,18 +367,11 @@ export default function LaporanPage() {
          return [item.nama_produk, stok, formatCurrency(item.harga_beli || 0), formatCurrency(item.harga_jual || 0), status];
       });
 
-      const purchaseRows = reportData.productSalesRows.map((item) => [
-         item.name,
-         item.qty,
-         formatCurrency(item.modal / Math.max(item.qty, 1)),
-         formatCurrency(item.modal),
-      ]);
-
       const profitRows = [
-         ["Pendapatan", formatCurrency(reportData.totalRevenue)],
+         ["Omzet", formatCurrency(reportData.omzet)],
          ["Modal", formatCurrency(reportData.totalModal)],
-         ["Laba Kotor", formatCurrency(reportData.totalLaba)],
-         ["Margin", `${reportData.totalRevenue > 0 ? ((reportData.totalLaba / reportData.totalRevenue) * 100).toFixed(1) : 0}%`],
+         ["Laba Kotor", formatCurrency(reportData.labaKotor)],
+         ["Margin", `${reportData.omzet > 0 ? ((reportData.labaKotor / reportData.omzet) * 100).toFixed(1) : 0}%`],
       ];
 
       const html = `<!DOCTYPE html>
@@ -475,32 +475,11 @@ export default function LaporanPage() {
             </div>
 
             <div class="section">
-              <h2 class="section-title">4. Laporan Pembelian</h2>
-              <table>
-                <thead><tr><th>Produk</th><th>Qty</th><th>Harga Beli</th><th>Total Modal</th></tr></thead>
-                <tbody>${buildRowsHtml(purchaseRows)}</tbody>
-              </table>
-            </div>
-
-            <div class="section">
-              <h2 class="section-title">5. Laporan Laba</h2>
+              <h2 class="section-title">4. Laporan Laba</h2>
               <table>
                 <thead><tr><th>Jenis</th><th>Nilai</th></tr></thead>
                 <tbody>${buildRowsHtml(profitRows)}</tbody>
               </table>
-            </div>
-
-            <div class="foot">
-              <div>
-                <div>Disetujui oleh</div>
-                <div class="signature-line"></div>
-                <div>Pengelola Koperasi</div>
-              </div>
-              <div>
-                <div>Diperiksa oleh</div>
-                <div class="signature-line"></div>
-                <div>Bendahara</div>
-              </div>
             </div>
           </div>
         </body>
@@ -534,6 +513,7 @@ export default function LaporanPage() {
                   onChange={(e) => setFilter(e.target.value)}
                >
                   <option value="today">{FILTER_OPTIONS.today}</option>
+                  <option value="week">{FILTER_OPTIONS.week}</option>
                   <option value="month">{FILTER_OPTIONS.month}</option>
                </select>
                <button className="btn btn--secondary laporan-page__button" onClick={exportReportToCsv}>
@@ -573,26 +553,26 @@ export default function LaporanPage() {
                   <div className="report-section__header">
                      <div>
                         <h2 className="report-section__title">1. Laporan Penjualan</h2>
-                        <p className="report-section__subtitle">Transaksi kasir dan order yang sudah dikonfirmasi dan lunas.</p>
+                        <p className="report-section__subtitle">Ringkasan transaksi kasir dan order terkonfirmasi selama periode terpilih.</p>
                      </div>
                   </div>
 
                   <div className="metric-grid">
                      <div className="metric-card">
-                        <div className="metric-card__label">Total Penjualan</div>
-                        <div className="metric-card__value">{formatCurrency(reportData.totalRevenue)}</div>
+                        <div className="metric-card__label">Omzet</div>
+                        <div className="metric-card__value">{formatCurrency(reportData.omzet)}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Jumlah Transaksi Valid</div>
-                        <div className="metric-card__value">{reportData.salesRows.length}</div>
+                        <div className="metric-card__label">Item Terjual</div>
+                        <div className="metric-card__value">{reportData.itemTerjual}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Order Siswa Valid</div>
-                        <div className="metric-card__value">{validOrders.length}</div>
+                        <div className="metric-card__label">Jumlah Transaksi</div>
+                        <div className="metric-card__value">{reportData.totalTransactions}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Order Guru Valid</div>
-                        <div className="metric-card__value">{validOrdersGuru.length}</div>
+                        <div className="metric-card__label">Laba Kotor</div>
+                        <div className="metric-card__value">{formatCurrency(reportData.labaKotor)}</div>
                      </div>
                   </div>
 
@@ -602,7 +582,7 @@ export default function LaporanPage() {
                            <tr>
                               <th className="laporan-table__head">Tanggal</th>
                               <th className="laporan-table__head">Jenis</th>
-                              <th className="laporan-table__head">Pelanggan</th>
+                              <th className="laporan-table__head">ID Pelanggan</th>
                               <th className="laporan-table__head">Metode</th>
                               <th className="laporan-table__head">Status</th>
                               <th className="laporan-table__head">Total</th>
@@ -646,16 +626,16 @@ export default function LaporanPage() {
                         <div className="metric-card__value">{reportData.productSalesRows.reduce((sum, item) => sum + item.qty, 0)}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Produk Terlibat</div>
+                        <div className="metric-card__label">Jumlah Produk Terjual</div>
                         <div className="metric-card__value">{reportData.productSalesRows.length}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Pendapatan</div>
+                        <div className="metric-card__label">Omzet Produk</div>
                         <div className="metric-card__value">{formatCurrency(reportData.productSalesRows.reduce((sum, item) => sum + item.revenue, 0))}</div>
                      </div>
                   </div>
 
-                  <div className="laporan-page__table-wrap">
+                  <div className="laporan-page__table-wrap laporan-page__table-wrap--scroll">
                      <table className="laporan-table">
                         <thead>
                            <tr>
@@ -707,11 +687,11 @@ export default function LaporanPage() {
                         <div className="metric-card__value">{formatCurrency(reportData.stockValue)}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Barang Habis</div>
+                        <div className="metric-card__label">Produk Kosong</div>
                         <div className="metric-card__value">{reportData.outOfStockProducts.length}</div>
                      </div>
                      <div className="metric-card">
-                        <div className="metric-card__label">Barang Menipis</div>
+                        <div className="metric-card__label">Produk Menipis</div>
                         <div className="metric-card__value">{reportData.lowStockProducts.length}</div>
                      </div>
                   </div>
@@ -757,69 +737,19 @@ export default function LaporanPage() {
                   </div>
                </div>
 
-               <div className="report-section">
-                  <div className="report-section__header">
-                     <div>
-                        <h2 className="report-section__title">4. Laporan Pembelian</h2>
-                        <p className="report-section__subtitle">Modal pembelian yang dihitung dari harga beli produk dan jumlah yang terjual.</p>
-                     </div>
-                  </div>
-
-                  <div className="metric-grid">
-                     <div className="metric-card">
-                        <div className="metric-card__label">Total Modal</div>
-                        <div className="metric-card__value">{formatCurrency(reportData.totalModal)}</div>
-                     </div>
-                     <div className="metric-card">
-                        <div className="metric-card__label">Produk dengan Modal</div>
-                        <div className="metric-card__value">{reportData.productSalesRows.length}</div>
-                     </div>
-                  </div>
-
-                  <div className="laporan-page__table-wrap">
-                     <table className="laporan-table">
-                        <thead>
-                           <tr>
-                              <th className="laporan-table__head">Produk</th>
-                              <th className="laporan-table__head">Qty Terjual</th>
-                              <th className="laporan-table__head">Harga Beli</th>
-                              <th className="laporan-table__head">Total Modal</th>
-                           </tr>
-                        </thead>
-                        <tbody>
-                           {reportData.productSalesRows.length === 0 ? (
-                              <tr>
-                                 <td className="laporan-table__empty" colSpan="4">
-                                    Belum ada data pembelian modal.
-                                 </td>
-                              </tr>
-                           ) : (
-                              reportData.productSalesRows.map((item) => (
-                                 <tr key={item.id} className="laporan-table__row">
-                                    <td className="laporan-table__cell">{item.name}</td>
-                                    <td className="laporan-table__cell">{item.qty}</td>
-                                    <td className="laporan-table__cell">{formatCurrency(item.modal / Math.max(item.qty, 1))}</td>
-                                    <td className="laporan-table__cell">{formatCurrency(item.modal)}</td>
-                                 </tr>
-                              ))
-                           )}
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
 
                <div className="report-section">
                   <div className="report-section__header">
                      <div>
                         <h2 className="report-section__title">5. Laporan Laba</h2>
-                        <p className="report-section__subtitle">Selisih pendapatan penjualan dan modal pembelian.</p>
+                        <p className="report-section__subtitle">Ringkasan omzet, biaya modal, dan laba kotor dari penjualan.</p>
                      </div>
                   </div>
 
                   <div className="metric-grid">
                      <div className="metric-card">
-                        <div className="metric-card__label">Pendapatan</div>
-                        <div className="metric-card__value">{formatCurrency(reportData.totalRevenue)}</div>
+                        <div className="metric-card__label">Omzet</div>
+                        <div className="metric-card__value">{formatCurrency(reportData.omzet)}</div>
                      </div>
                      <div className="metric-card">
                         <div className="metric-card__label">Modal</div>
@@ -827,27 +757,14 @@ export default function LaporanPage() {
                      </div>
                      <div className="metric-card">
                         <div className="metric-card__label">Laba Kotor</div>
-                        <div className="metric-card__value">{formatCurrency(reportData.totalLaba)}</div>
+                        <div className="metric-card__value">{formatCurrency(reportData.labaKotor)}</div>
                      </div>
                      <div className="metric-card">
                         <div className="metric-card__label">Margin</div>
                         <div className="metric-card__value">
-                           {reportData.totalRevenue > 0 ? `${((reportData.totalLaba / reportData.totalRevenue) * 100).toFixed(1)}%` : "0%"}
+                           {reportData.omzet > 0 ? `${((reportData.labaKotor / reportData.omzet) * 100).toFixed(1)}%` : "0%"}
                         </div>
                      </div>
-                  </div>
-               </div>
-
-               <div className="report-signature">
-                  <div>
-                     <p className="report-signature__label">Disetujui oleh</p>
-                     <div className="report-signature__line" />
-                     <p className="report-signature__name">Pengelola Koperasi</p>
-                  </div>
-                  <div>
-                     <p className="report-signature__label">Diperiksa oleh</p>
-                     <div className="report-signature__line" />
-                     <p className="report-signature__name">Bendahara</p>
                   </div>
                </div>
             </>
