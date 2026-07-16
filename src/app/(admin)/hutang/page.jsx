@@ -54,6 +54,8 @@ export default function BukuHutangPage() {
          : item.nama_guru?.toLowerCase().includes(search) || String(item.nip).toLowerCase().includes(search);
    });
 
+   const totalHutangAktif = filteredItems.reduce((sum, item) => sum + Number(item.total_hutang || 0), 0);
+
    function openConfirmModal(entry) {
       setSelectedEntry({ ...entry, type: selectedType });
       setPaymentMethod("Tunai");
@@ -128,6 +130,17 @@ export default function BukuHutangPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                />
+            </div>
+         </div>
+
+         <div className="hutang-page__stats" aria-label="Ringkasan hutang">
+            <div className="hutang-page__stat-card">
+               <span className="hutang-page__stat-label">Total akun dengan hutang</span>
+               <strong className="hutang-page__stat-value">{filteredItems.length}</strong>
+            </div>
+            <div className="hutang-page__stat-card">
+               <span className="hutang-page__stat-label">Akumulasi hutang aktif</span>
+               <strong className="hutang-page__stat-value">Rp {totalHutangAktif.toLocaleString("id-ID")}</strong>
             </div>
          </div>
 

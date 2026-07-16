@@ -21,6 +21,17 @@ const formatDate = (value) => {
    return new Date(value).toLocaleString("id-ID");
 };
 
+const toToneClass = (value = "") => {
+   const normalized = String(value).toLowerCase();
+   if (normalized.includes("kasir")) return "report-pill report-pill--info";
+   if (normalized.includes("siswa")) return "report-pill report-pill--warning";
+   if (normalized.includes("guru")) return "report-pill report-pill--accent";
+   if (normalized.includes("lunas") || normalized.includes("dikonfirmasi")) return "report-pill report-pill--success";
+   if (normalized.includes("saldo")) return "report-pill report-pill--primary";
+   if (normalized.includes("tunai")) return "report-pill report-pill--neutral";
+   return "report-pill";
+};
+
 const isValidTransaction = (item) => item.payment_status === "Lunas" && item.transaction_type !== "hutang_payment";
 const isValidOrder = (item) => item.status_order === "Dikonfirmasi";
 
@@ -503,25 +514,30 @@ export default function LaporanPage() {
             </div>
 
             <div className="laporan-page__filter">
-               <label className="laporan-page__label" htmlFor="filter-time">
-                  Periode
-               </label>
-               <select
-                  id="filter-time"
-                  className="laporan-page__select"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-               >
-                  <option value="today">{FILTER_OPTIONS.today}</option>
-                  <option value="week">{FILTER_OPTIONS.week}</option>
-                  <option value="month">{FILTER_OPTIONS.month}</option>
-               </select>
-               <button className="btn btn--secondary laporan-page__button" onClick={exportReportToCsv}>
-                  Export CSV
-               </button>
-               <button className="btn btn--secondary laporan-page__button" onClick={handleExportPdf}>
-                  Export PDF
-               </button>
+               <div className="laporan-page__filter-left">
+                  <label className="laporan-page__label" htmlFor="filter-time">
+                     Periode
+                  </label>
+                  <select
+                     id="filter-time"
+                     className="laporan-page__select"
+                     value={filter}
+                     onChange={(e) => setFilter(e.target.value)}
+                  >
+                     <option value="today">{FILTER_OPTIONS.today}</option>
+                     <option value="week">{FILTER_OPTIONS.week}</option>
+                     <option value="month">{FILTER_OPTIONS.month}</option>
+                  </select>
+               </div>
+
+               <div className="laporan-page__filter-right">
+                  <button className="btn btn--secondary laporan-page__button" onClick={exportReportToCsv}>
+                     Export CSV
+                  </button>
+                  <button className="btn btn--secondary laporan-page__button" onClick={handleExportPdf}>
+                     Export PDF
+                  </button>
+               </div>
             </div>
          </div>
 
@@ -599,10 +615,16 @@ export default function LaporanPage() {
                               reportData.salesRows.map((item) => (
                                  <tr key={`${item.type}-${item.id}`} className="laporan-table__row">
                                     <td className="laporan-table__cell">{formatDate(item.tanggal)}</td>
-                                    <td className="laporan-table__cell">{item.type}</td>
+                                    <td className="laporan-table__cell">
+                                       <span className={toToneClass(item.type)}>{item.type}</span>
+                                    </td>
                                     <td className="laporan-table__cell">{item.pelanggan}</td>
-                                    <td className="laporan-table__cell">{item.metode}</td>
-                                    <td className="laporan-table__cell">{item.status}</td>
+                                    <td className="laporan-table__cell">
+                                       <span className={toToneClass(item.metode)}>{item.metode}</span>
+                                    </td>
+                                    <td className="laporan-table__cell">
+                                       <span className={toToneClass(item.status)}>{item.status}</span>
+                                    </td>
                                     <td className="laporan-table__cell">{formatCurrency(item.total)}</td>
                                  </tr>
                               ))
@@ -727,7 +749,9 @@ export default function LaporanPage() {
                                        <td className="laporan-table__cell">{stok}</td>
                                        <td className="laporan-table__cell">{formatCurrency(item.harga_beli || 0)}</td>
                                        <td className="laporan-table__cell">{formatCurrency(item.harga_jual || 0)}</td>
-                                       <td className="laporan-table__cell">{status}</td>
+                                       <td className="laporan-table__cell">
+                                          <span className={toToneClass(status)}>{status}</span>
+                                       </td>
                                     </tr>
                                  );
                               })
@@ -741,7 +765,7 @@ export default function LaporanPage() {
                <div className="report-section">
                   <div className="report-section__header">
                      <div>
-                        <h2 className="report-section__title">5. Laporan Laba</h2>
+                        <h2 className="report-section__title">4. Laporan Laba</h2>
                         <p className="report-section__subtitle">Ringkasan omzet, biaya modal, dan laba kotor dari penjualan.</p>
                      </div>
                   </div>

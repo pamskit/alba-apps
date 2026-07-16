@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Select from "react-select";
 import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
+import "./topup-saldo.css";
 
 const supabase = createClient();
 
@@ -65,6 +66,10 @@ export default function AdminTopupSaldoPage() {
       ? siswaOptions.find((opt) => opt.value === Number(selectedSiswa))
       : guruOptions.find((opt) => opt.value === Number(selectedGuru));
 
+   const selectedAccount = selectedType === "siswa"
+      ? siswa.find((item) => item.nis === Number(selectedSiswa))
+      : guru.find((item) => item.nip === Number(selectedGuru));
+
    async function handleTopup(event) {
       event.preventDefault();
       const amountValue = Number(amount);
@@ -109,32 +114,60 @@ export default function AdminTopupSaldoPage() {
    }
 
    return (
-      <div className="page-content">
-         <div className="page-header">
+      <div className="page-content topup-page">
+         <div className="page-header topup-page__header">
             <h1>Top-Up Saldo</h1>
             <p>Tambahkan saldo siswa atau guru tanpa mencampur dengan transaksi kasir.</p>
+
+            <div className="topup-page__stats" aria-label="Ringkasan akun">
+               <div className="topup-page__stat-card">
+                  <span className="topup-page__stat-label">Data siswa tersedia</span>
+                  <strong className="topup-page__stat-value">{siswa.length}</strong>
+               </div>
+               <div className="topup-page__stat-card">
+                  <span className="topup-page__stat-label">Data guru tersedia</span>
+                  <strong className="topup-page__stat-value">{guru.length}</strong>
+               </div>
+            </div>
          </div>
 
-         <form onSubmit={handleTopup} className="admin-form">
-            <div className="form-row">
-               <label>
-                  Tipe Akun
-                  <select
-                     value={selectedType}
-                     onChange={(e) => {
-                        setSelectedType(e.target.value);
-                        setSelectedSiswa("");
-                        setSelectedGuru("");
-                     }}
-                     className="form-select"
-                  >
-                     <option value="siswa">Siswa</option>
-                     <option value="guru">Guru</option>
-                  </select>
-               </label>
+         <form onSubmit={handleTopup} className="admin-form topup-page__form">
+            <div className="topup-page__grid">
+               <div className="form-row topup-page__field">
+                  <label>
+                     Tipe Akun
+                     <select
+                        value={selectedType}
+                        onChange={(e) => {
+                           setSelectedType(e.target.value);
+                           setSelectedSiswa("");
+                           setSelectedGuru("");
+                        }}
+                        className="form-select"
+                     >
+                        <option value="siswa">Siswa</option>
+                        <option value="guru">Guru</option>
+                     </select>
+                  </label>
+               </div>
+
+               <div className="form-row topup-page__field">
+                  <label>
+                     Metode Pembayaran
+                     <select
+                        value={method}
+                        onChange={(e) => setMethod(e.target.value)}
+                        className="form-select"
+                     >
+                        <option value="Tunai">Tunai</option>
+                        <option value="Transfer">Transfer</option>
+                        <option value="Lainnya">Lainnya</option>
+                     </select>
+                  </label>
+               </div>
             </div>
 
-            <div className="form-row">
+            <div className="form-row topup-page__field">
                <label>
                   Pilih {selectedType === "siswa" ? "Siswa" : "Guru"}
                   <Select
@@ -156,48 +189,43 @@ export default function AdminTopupSaldoPage() {
                </label>
             </div>
 
-            <div className="form-row">
-               <label>
-                  Jumlah Top-Up
-                  <input
-                     type="number"
-                     min="1"
-                     value={amount}
-                     onChange={(e) => setAmount(e.target.value)}
-                     placeholder="Masukkan jumlah"
-                  />
-               </label>
+            {selectedAccount ? (
+               <div className="topup-page__preview" role="status" aria-live="polite">
+                  <span className="topup-page__preview-label">Saldo saat ini</span>
+                  <strong className="topup-page__preview-value">Rp {Number(selectedAccount.saldo ?? 0).toLocaleString("id-ID")}</strong>
+               </div>
+            ) : null}
+
+            <div className="topup-page__grid">
+               <div className="form-row topup-page__field">
+                  <label>
+                     Jumlah Top-Up
+                     <input
+                        type="number"
+                        min="1"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Masukkan jumlah"
+                     />
+                  </label>
+               </div>
+
+               <div className="form-row topup-page__field">
+                  <label>
+                     Keterangan untuk riwayat
+                     <input
+                        type="text"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="Contoh: top-up awal, pembayaran tunai, transfer bank"
+                     />
+                  </label>
+               </div>
             </div>
 
-            <div className="form-row">
-               <label>
-                  Metode Pembayaran
-                  <select
-                     value={method}
-                     onChange={(e) => setMethod(e.target.value)}
-                     className="form-select"
-                  >
-                     <option value="Tunai">Tunai</option>
-                     <option value="Transfer">Transfer</option>
-                     <option value="Lainnya">Lainnya</option>
-                  </select>
-               </label>
-            </div>
+            <p className="hint-text topup-page__hint-full">Catatan ini akan muncul di riwayat saldo pengguna agar lebih mudah dipahami.</p>
 
-            <div className="form-row">
-               <label>
-                  Keterangan untuk riwayat
-                  <input
-                     type="text"
-                     value={note}
-                     onChange={(e) => setNote(e.target.value)}
-                     placeholder="Contoh: top-up awal, pembayaran tunai, transfer bank"
-                  />
-               </label>
-               <p className="hint-text">Catatan ini akan muncul di riwayat saldo pengguna agar lebih mudah dipahami.</p>
-            </div>
-
-            <button type="submit" className="btn btn--primary" disabled={loading}>
+            <button type="submit" className="btn btn--primary topup-page__submit" disabled={loading}>
                {loading ? "Memproses..." : "Top-Up Saldo"}
             </button>
          </form>

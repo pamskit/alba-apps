@@ -1,0 +1,154 @@
+.topup-page {
+   border: 1px solid #e2e8f0;
+   background: linear-gradient(180deg, #f8fbff 0%, #ffffff 180px);
+}
+
+.topup-page__header {
+   gap: 16px;
+}
+
+.topup-page__stats {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+   gap: 12px;
+}
+
+.topup-page__stat-card {
+   padding: 14px 16px;
+   border-radius: 14px;
+   border: 1px solid #dbe5ef;
+   background: #ffffff;
+   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+   display: grid;
+   gap: 5px;
+}
+
+.topup-page__stat-label {
+   color: #64748b;
+   font-size: 0.85rem;
+}
+
+.topup-page__stat-value {
+   font-size: 1.3rem;
+   color: #0f172a;
+   letter-spacing: -0.02em;
+}
+
+.topup-page__form {
+   display: grid;
+   gap: 20px;
+   background: #ffffff;
+   border: 1px solid #e2e8f0;
+   border-radius: 16px;
+   padding: 22px;
+}
+
+.topup-page__grid {
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 20px;
+   align-items: start;
+}
+
+.topup-page__field {
+   margin-bottom: 0;
+   align-content: start;
+}
+
+.topup-page__field label {
+   gap: 8px;
+   font-weight: 600;
+   color: #475569;
+}
+
+.topup-page__field {
+   gap: 10px;
+}
+
+.topup-page__field input,
+.topup-page__field select {
+   min-height: 48px;
+}
+
+.topup-page .react-select__control {
+   min-height: 48px;
+   border-color: #b9c6d8;
+   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.45);
+}
+
+.topup-page .react-select__value-container {
+   padding-left: 0.9rem;
+}
+
+.topup-page .react-select__placeholder {
+   color: #6b7280;
+   font-weight: 500;
+}
+
+.topup-page .react-select__indicators {
+   border-left: 1px solid #cbd5e1;
+   padding-inline: 4px;
+}
+
+.topup-page .react-select__dropdown-indicator {
+   color: #475569;
+}
+
+.topup-page .hint-text {
+   margin-top: 8px;
+   line-height: 1.5;
+}
+
+.topup-page__hint-full {
+   margin-top: -6px;
+}
+
+.topup-page__preview {
+   margin: 14px 0;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 10px;
+   padding: 12px 14px;
+   border-radius: 14px;
+   border: 1px solid #bde2dc;
+   background: linear-gradient(90deg, #ecfdf5 0%, #f0fdfa 70%);
+}
+
+.topup-page__preview-label {
+   color: #0f766e;
+   font-size: 0.9rem;
+   font-weight: 600;
+}
+
+.topup-page__preview-value {
+   color: #134e4a;
+   font-size: 1.1rem;
+}
+
+.topup-page__submit {
+   margin-top: 4px;
+   width: 100%;
+   min-height: 48px;
+   font-weight: 700;
+}
+
+@media (max-width: 768px) {
+   .topup-page {
+      padding: 1.25rem;
+   }
+
+   .topup-page__form {
+      padding: 14px;
+   }
+
+   .topup-page__grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+   }
+
+   .topup-page__preview {
+      flex-direction: column;
+      align-items: flex-start;
+   }
+}
