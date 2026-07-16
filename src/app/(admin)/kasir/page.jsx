@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Select from "react-select";
 import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
@@ -16,13 +16,23 @@ export default function KasirPage() {
    const [selectedSiswa, setSelectedSiswa] = useState(null);
    const [selectedGuru, setSelectedGuru] = useState(null);
    const [productSearch, setProductSearch] = useState("");
+   const [scanPreview, setScanPreview] = useState("");
+   const [isScanMode, setIsScanMode] = useState(false);
    const [cart, setCart] = useState([]);
    const [paymentMethod, setPaymentMethod] = useState("Tunai");
    const [loading, setLoading] = useState(false);
+   const scanInputRef = useRef(null);
+   const scanBufferRef = useRef("");
+   const scanLastKeyTsRef = useRef(0);
 
    useEffect(() => {
       fetchAll();
    }, []);
+
+   useEffect(() => {
+      if (!isScanMode) return;
+      scanInputRef.current?.focus();
+   }, [isScanMode]);
 
    async function fetchAll() {
       const [{ data: produk }, { data: listSiswa }, { data: listGuru }] = await Promise.all([
@@ -76,6 +86,118 @@ export default function KasirPage() {
             return a.nama_produk.localeCompare(b.nama_produk);
          });
    }, [products, productSearch]);
+
+   const hasProductSearch = productSearch.trim().length > 0;
+
+   const productLookup = useMemo(() => {
+      const lookup = new Map();
+
+      products.forEach((product) => {
+         [product.barcode, product.kode_produk, product.id]
+            .filter(Boolean)
+            .map((value) => String(value).trim())
+            .forEach((key) => {
+               if (!lookup.has(key)) {
+                  lookup.set(key, product);
+               }
+            });
+      });
+
+      return lookup;
+   }, [products]);
+
+   function handleScanSubmit(rawValue) {
+      const scannedValue = String(rawValue ?? "").trim();
+
+      if (!scannedValue) {
+         toast.error("Scan barcode terlebih dahulu");
+         return;
+      }
+
+      const matchedProduct = productLookup.get(scannedValue);
+
+      if (!matchedProduct) {
+         toast.error("Produk tidak ditemukan");
+         return;
+      }
+
+      if (!matchedProduct.stok || matchedProduct.stok <= 0) {
+         toast.error("Stok produk habis");
+         return;
+      }
+
+      addToCart(matchedProduct);
+      toast.success(`${matchedProduct.nama_produk} ditambahkan`);
+      setScanPreview(scannedValue);
+      scanBufferRef.current = "";
+      requestAnimationFrame(() => {
+         scanInputRef.current?.focus();
+      });
+   }
+
+   function handleScanKeyDown(event) {
+      if (!isScanMode) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.key === "Escape") {
+         setIsScanMode(false);
+         setScanPreview("");
+         scanBufferRef.current = "";
+         return;
+      }
+
+      const now = Date.now();
+      if (now - scanLastKeyTsRef.current > 150) {
+         scanBufferRef.current = "";
+      }
+      scanLastKeyTsRef.current = now;
+
+      if (event.key === "Enter") {
+         event.preventDefault();
+         handleScanSubmit(scanBufferRef.current);
+         scanBufferRef.current = "";
+         return;
+      }
+
+      if (event.key === "Backspace") {
+         event.preventDefault();
+         scanBufferRef.current = scanBufferRef.current.slice(0, -1);
+         setScanPreview(scanBufferRef.current);
+         return;
+      }
+
+      if (event.key.length === 1) {
+         event.preventDefault();
+         scanBufferRef.current += event.key;
+         setScanPreview(scanBufferRef.current);
+      }
+   }
+
+   function startScanMode() {
+      setIsScanMode(true);
+      setScanPreview("");
+      scanBufferRef.current = "";
+      requestAnimationFrame(() => {
+         scanInputRef.current?.focus();
+      });
+   }
+
+   function resetScanMode() {
+      setIsScanMode(false);
+      setScanPreview("");
+      scanBufferRef.current = "";
+   }
+
+   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
+   const selectedBalance =
+      customerType === "siswa"
+         ? Number(selectedSiswa?.siswa?.saldo ?? 0)
+         : Number(selectedGuru?.guru?.saldo ?? 0);
+   const selectedDebt =
+      customerType === "siswa"
+         ? Number(selectedSiswa?.siswa?.total_hutang ?? 0)
+         : Number(selectedGuru?.guru?.total_hutang ?? 0);
+   const insufficientSaldo = paymentMethod === "Saldo" && selectedBalance < total;
 
    const siswaOptions = useMemo(
       () =>
@@ -218,57 +340,136 @@ export default function KasirPage() {
    }
 
    return (
-      <div className="pos">
-         <div className="pos__left">
-            <div className="panel product-panel">
-               <div className="panel__header">
-                  <div>
-                     <h2>Produk</h2>
-                     <p className="panel__meta">{filteredProducts.length} produk ditemukan</p>
-                  </div>
-                  <input
-                     className="search-input"
-                     type="search"
-                     value={productSearch}
-                     onChange={(e) => setProductSearch(e.target.value)}
-                     placeholder="Cari produk..."
-                  />
+      <div className="pos-shell">
+         <header className="pos-shell__header">
+            <div>
+               <p className="pos-kicker">Kasir Admin</p>
+               <h1>POS ringan untuk transaksi cepat</h1>
+               <p className="pos-subtitle">Fokus ke pilih pelanggan, cari produk, lalu proses dalam satu alur yang singkat.</p>
+            </div>
+            <div className="pos-stats">
+               <div className="pos-stat">
+                  <span>Produk</span>
+                  <strong>{filteredProducts.length}</strong>
                </div>
-
-               <div className="product-grid">
-                  {filteredProducts.length === 0 ? (
-                     <div className="empty-state">Tidak ada produk ditemukan.</div>
-                  ) : (
-                     filteredProducts.map((p) => (
-                        <div
-                           key={p.id}
-                           className={`product-card ${p.stok <= 0 ? "product-card--disabled" : ""}`}
-                           onClick={() => p.stok > 0 && addToCart(p)}
-                        >
-                           <div className="product-card__top">
-                              <div className="product-card__name">{p.nama_produk}</div>
-                              <div className={`product-card__badge ${p.stok > 0 ? "product-card__badge--available" : "product-card__badge--empty"}`}>
-                                 {p.stok > 0 ? `Stok ${p.stok}` : "Habis"}
-                              </div>
-                           </div>
-                           <div className="product-card__price">Rp {(p.harga_jual ?? p.harga_beli ?? 0).toLocaleString()}</div>
-                        </div>
-                     ))
-                  )}
+               <div className="pos-stat">
+                  <span>Item</span>
+                  <strong>{cartCount}</strong>
+               </div>
+               <div className="pos-stat">
+                  <span>Total</span>
+                  <strong>Rp {total.toLocaleString()}</strong>
                </div>
             </div>
-         </div>
+         </header>
 
-         <div className="pos__right">
-            <div className="cart">
-               <div className="panel__header">
+         <div className="pos-layout">
+            <section className="pos-panel pos-panel--products">
+               <div className="pos-panel__header">
                   <div>
-                     <h2>Kasir POS</h2>
-                     <p className="panel__meta">Pilih siswa dan proses pesanan</p>
+                     <h2>Produk</h2>
+                     <p>{filteredProducts.length} hasil</p>
+                  </div>
+                  <div className="pos-panel__actions">
+                     <input
+                        className="pos-search"
+                        type="search"
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        placeholder="Cari nama / kode produk"
+                     />
                   </div>
                </div>
 
-               <div className="cart__siswa">
+               <div className="pos-scan-field">
+                  <label className="pos-scan-label">Barcode</label>
+                  <div className="pos-scan-box">
+                     <div className="pos-scan-box__status">
+                        {isScanMode ? "Mode scan aktif. Arahkan scanner lalu tekan Enter." : "Barcode diisi dari scanner."}
+                     </div>
+                     <div className="pos-scan-box__actions">
+                        <button
+                           type="button"
+                           className="btn btn--primary pos-scan-box__button"
+                           onClick={startScanMode}
+                           disabled={isScanMode || loading}
+                        >
+                           {isScanMode ? "Scanning..." : "Mulai Scan"}
+                        </button>
+                        <button
+                           type="button"
+                           className="btn pos-scan-box__button"
+                           onClick={resetScanMode}
+                           disabled={loading}
+                        >
+                           Reset
+                        </button>
+                     </div>
+                     {scanPreview && <div className="pos-scan-box__preview">Preview scan: {scanPreview}</div>}
+                  </div>
+               </div>
+
+               <input
+                  ref={scanInputRef}
+                  className="pos-scan-capture"
+                  type="text"
+                  value={scanPreview}
+                  readOnly
+                  onKeyDown={handleScanKeyDown}
+                  autoComplete="off"
+                  inputMode="numeric"
+                  aria-label="Scanner produk"
+                  tabIndex={0}
+               />
+
+               <div
+                  className={`pos-product-list ${hasProductSearch ? "pos-product-list--search" : ""}`}
+                  role="list"
+                  aria-label="Daftar produk"
+               >
+                  {filteredProducts.length === 0 ? (
+                     <div className="pos-empty">Tidak ada produk ditemukan.</div>
+                  ) : (
+                     filteredProducts.map((p) => {
+                        const price = p.harga_jual ?? p.harga_beli ?? 0;
+                        const available = p.stok > 0;
+
+                        return (
+                           <button
+                              key={p.id}
+                              type="button"
+                              className={`pos-product ${available ? "" : "pos-product--disabled"}`}
+                              onClick={() => available && addToCart(p)}
+                              disabled={!available}
+                           >
+                              <div className="pos-product__main">
+                                 <div className="pos-product__title-row">
+                                    <span className="pos-product__id">#{p.id}</span>
+                                    <strong>{p.nama_produk}</strong>
+                                 </div>
+                                 <div className="pos-product__meta">
+                                    <span className={`pos-pill ${available ? "pos-pill--success" : "pos-pill--danger"}`}>
+                                       {available ? `Stok ${p.stok}` : "Habis"}
+                                    </span>
+                                    <span className="pos-product__price">Rp {price.toLocaleString()}</span>
+                                 </div>
+                              </div>
+                           </button>
+                        );
+                     })
+                  )}
+               </div>
+            </section>
+
+            <aside className="pos-panel pos-panel--cart">
+               <div className="pos-panel__header">
+                  <div>
+                     <h2>Keranjang</h2>
+                     <p>{cartCount} item siap diproses</p>
+                  </div>
+               </div>
+
+               <div className="pos-customer">
                   <div className="customer-toggle" role="tablist" aria-label="Pilih pelanggan">
                      <button
                         type="button"
@@ -292,73 +493,95 @@ export default function KasirPage() {
                      </button>
                   </div>
 
-                  <label htmlFor="customer-select">Pilih {customerType === "siswa" ? "Siswa" : "Guru"}</label>
                   <Select
                      inputId="customer-select"
                      options={customerOptions}
                      value={selectedCustomer}
                      onChange={customerType === "siswa" ? setSelectedSiswa : setSelectedGuru}
-                     placeholder={customerType === "siswa" ? "Cari dan pilih siswa..." : "Cari dan pilih guru..."}
+                     placeholder={customerType === "siswa" ? "Cari / pilih siswa" : "Cari / pilih guru"}
                      isSearchable
                      className="react-select-container"
                      classNamePrefix="react-select"
                      noOptionsMessage={() => (customerType === "siswa" ? "Tidak ada siswa" : "Tidak ada guru")}
                   />
-               </div>
 
-               <div className="cart__list">
-                  {cart.length === 0 && <div className="note">Keranjang kosong</div>}
-                  {cart.map((it) => (
-                     <div className="cart-item" key={it.id}>
-                        <div className="cart-item__meta">
-                           <div>{it.nama}</div>
-                           <div className="note">Rp {it.harga.toLocaleString()}</div>
-                        </div>
-                        <div className="cart-item__controls">
-                           <button className="btn" onClick={() => changeQty(it.id, -1)}>-</button>
-                           <div className="controls__qty">{it.qty}</div>
-                           <button className="btn" onClick={() => changeQty(it.id, +1)}>+</button>
-                        </div>
+                  <div className="pos-customer__summary">
+                     <div>
+                        <span>Saldo</span>
+                        <strong>Rp {selectedBalance.toLocaleString()}</strong>
                      </div>
-                  ))}
-               </div>
-
-               <div className="payment">
-                  <div>
-                     <label>
-                        <input type="radio" name="metode" value="Tunai" checked={paymentMethod === "Tunai"} onChange={() => setPaymentMethod("Tunai")} /> Tunai
-                     </label>
-                     <label style={{ marginLeft: 8 }}>
-                        <input type="radio" name="metode" value="QRIS" checked={paymentMethod === "QRIS"} onChange={() => setPaymentMethod("QRIS")} /> QRIS
-                     </label>
-                     <label style={{ marginLeft: 8 }}>
-                        <input type="radio" name="metode" value="Saldo" checked={paymentMethod === "Saldo"} onChange={() => setPaymentMethod("Saldo")} /> Saldo
-                     </label>
-                     <label style={{ marginLeft: 8 }}>
-                        <input type="radio" name="metode" value="Hutang" checked={paymentMethod === "Hutang"} onChange={() => setPaymentMethod("Hutang")} /> Hutang
-                     </label>
+                     <div>
+                        <span>Hutang</span>
+                        <strong>Rp {selectedDebt.toLocaleString()}</strong>
+                     </div>
                   </div>
-                  <div className="total">Total: Rp {total.toLocaleString()}</div>
-                  {paymentMethod === "Saldo" && selectedCustomer && (
-                     <div style={{ fontSize: "0.9rem", color: "#666", marginTop: 8 }}>
-                        Saldo tersedia: Rp {Number(customerType === "siswa" ? selectedCustomer.siswa?.saldo : selectedCustomer.guru?.saldo ?? 0).toLocaleString()}
-                     </div>
+               </div>
+
+               <div className="pos-cart-list">
+                  {cart.length === 0 ? (
+                     <div className="pos-empty pos-empty--compact">Keranjang masih kosong.</div>
+                  ) : (
+                     cart.map((it) => (
+                        <div className="pos-cart-item" key={it.id}>
+                           <div className="pos-cart-item__info">
+                              <strong>{it.nama}</strong>
+                              <span>Rp {it.harga.toLocaleString()}</span>
+                           </div>
+                           <div className="pos-cart-item__controls">
+                              <button type="button" className="pos-icon-button" onClick={() => changeQty(it.id, -1)} aria-label={`Kurangi ${it.nama}`}>
+                                 -
+                              </button>
+                              <div className="pos-cart-item__qty">{it.qty}</div>
+                              <button type="button" className="pos-icon-button" onClick={() => changeQty(it.id, 1)} aria-label={`Tambah ${it.nama}`}>
+                                 +
+                              </button>
+                           </div>
+                        </div>
+                     ))
                   )}
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                     <button className="btn btn--primary" onClick={handleProcess} disabled={loading}>
-                        {loading ? "Memproses..." : "Proses"}
+               </div>
+
+               <div className="pos-payment">
+                  <div className="pos-payment__label">Metode bayar</div>
+                  <div className="pos-payment__options">
+                     {[
+                        ["Tunai", "Tunai"],
+                        ["QRIS", "QRIS"],
+                        ["Saldo", "Saldo"],
+                        ["Hutang", "Hutang"],
+                     ].map(([value, label]) => (
+                        <label key={value} className={`pos-payment-option ${paymentMethod === value ? "pos-payment-option--active" : ""}`}>
+                           <input type="radio" name="metode" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} />
+                           <span>{label}</span>
+                        </label>
+                     ))}
+                  </div>
+
+                  <div className="pos-total">
+                     <span>Total</span>
+                     <strong>Rp {total.toLocaleString()}</strong>
+                  </div>
+
+                  {paymentMethod === "Saldo" && selectedCustomer && (
+                     <div className="pos-hint">Saldo tersedia: Rp {selectedBalance.toLocaleString()}</div>
+                  )}
+
+                  <div className="pos-actions">
+                     <button className="btn btn--primary" onClick={handleProcess} disabled={loading || insufficientSaldo}>
+                        {loading ? "Memproses..." : "Proses transaksi"}
                      </button>
                      <button
                         className="btn"
+                        type="button"
                         onClick={() => {
                            setCart([]);
                         }}
                      >
-                        Bersihkan
+                        Kosongkan
                      </button>
                   </div>
                </div>
-            </div>
+            </aside>
          </div>
       </div>
    );
