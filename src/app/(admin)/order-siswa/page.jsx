@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import "./order-siswa.css";
@@ -13,8 +14,6 @@ export default function OrderSiswaPage() {
    const [orderItems, setOrderItems] = useState([]);
    const [loading, setLoading] = useState(true);
    const [actionLoading, setActionLoading] = useState(false);
-   const [message, setMessage] = useState("");
-   const [errorMessage, setErrorMessage] = useState("");
 
    useEffect(() => {
       fetchOrders();
@@ -22,7 +21,6 @@ export default function OrderSiswaPage() {
 
    async function fetchOrders() {
       setLoading(true);
-      setErrorMessage("");
       try {
          const { data, error } = await supabase
             .from("transaksi")
@@ -44,7 +42,7 @@ export default function OrderSiswaPage() {
          setOrders(orderList);
       } catch (error) {
          console.error(error);
-         setErrorMessage("Gagal memuat order siswa.");
+         toast.error("Gagal memuat order siswa.");
       } finally {
          setLoading(false);
       }
@@ -52,7 +50,6 @@ export default function OrderSiswaPage() {
 
    async function fetchOrderItems(orderId) {
       setActionLoading(true);
-      setErrorMessage("");
       try {
          const { data, error } = await supabase
             .from("detail_transaksi")
@@ -63,7 +60,7 @@ export default function OrderSiswaPage() {
          setOrderItems(data ?? []);
       } catch (error) {
          console.error(error);
-         setErrorMessage("Gagal memuat detail order.");
+         toast.error("Gagal memuat detail order.");
       } finally {
          setActionLoading(false);
       }
@@ -127,7 +124,6 @@ export default function OrderSiswaPage() {
 
    async function updateOrderStatus(order, updates, notification) {
       setActionLoading(true);
-      setErrorMessage("");
       try {
          const { error: orderError } = await supabase
             .from("transaksi")
@@ -135,14 +131,14 @@ export default function OrderSiswaPage() {
             .eq("id", order.id);
          if (orderError) throw orderError;
 
-         setMessage(notification);
+         toast.success(notification);
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);
          }
       } catch (error) {
          console.error(error);
-         setErrorMessage("Gagal memperbarui status order.");
+         toast.error("Gagal memperbarui status order.");
       } finally {
          setActionLoading(false);
       }
@@ -150,7 +146,7 @@ export default function OrderSiswaPage() {
 
    async function handleConfirm(order) {
       if (!order?.siswa) {
-         setErrorMessage("Data siswa tidak tersedia untuk order ini.");
+         toast.error("Data siswa tidak tersedia untuk order ini.");
          return;
       }
 
@@ -175,12 +171,12 @@ export default function OrderSiswaPage() {
                if (result.error) throw result.error;
             }
 
-            setMessage("Order saldo berhasil dikonfirmasi.");
+            toast.success("Order saldo berhasil dikonfirmasi.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
             console.error(error);
-            setErrorMessage("Gagal mengonfirmasi order dengan pembayaran saldo.");
+            toast.error("Gagal mengonfirmasi order dengan pembayaran saldo.");
          } finally {
             setActionLoading(false);
          }
@@ -206,12 +202,12 @@ export default function OrderSiswaPage() {
                if (result.error) throw result.error;
             }
 
-            setMessage("Order hutang berhasil dikonfirmasi, hutang siswa diperbarui, dan riwayat tercatat.");
+            toast.success("Order hutang berhasil dikonfirmasi, hutang siswa diperbarui, dan riwayat tercatat.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
             console.error(error);
-            setErrorMessage("Gagal mengonfirmasi order hutang.");
+            toast.error("Gagal mengonfirmasi order hutang.");
          } finally {
             setActionLoading(false);
          }
@@ -235,12 +231,12 @@ export default function OrderSiswaPage() {
                if (result.error) throw result.error;
             }
 
-            setMessage("Order tunai berhasil dikonfirmasi dan riwayat tercatat.");
+            toast.success("Order tunai berhasil dikonfirmasi dan riwayat tercatat.");
             await fetchOrders();
             if (selectedOrderId === order.id) await fetchOrderItems(order.id);
          } catch (error) {
             console.error(error);
-            setErrorMessage("Gagal mengonfirmasi order tunai.");
+            toast.error("Gagal mengonfirmasi order tunai.");
          } finally {
             setActionLoading(false);
          }
@@ -252,12 +248,11 @@ export default function OrderSiswaPage() {
 
    async function handleReject(order) {
       if (!order?.siswa) {
-         setErrorMessage("Data siswa tidak tersedia untuk order ini.");
+         toast.error("Data siswa tidak tersedia untuk order ini.");
          return;
       }
 
       setActionLoading(true);
-      setErrorMessage("");
       try {
          const totalHarga = Number(order.total_harga ?? 0);
          const shouldRefundSaldo = order.metode_pembayaran === "Saldo" && order.payment_status === "Lunas";
@@ -312,14 +307,14 @@ export default function OrderSiswaPage() {
             }
          }
 
-         setMessage(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : isHutangPending ? "Order hutang ditolak." : "Order ditolak.");
+         toast.success(shouldRefundSaldo ? "Order ditolak dan saldo siswa dikembalikan." : isHutangPending ? "Order hutang ditolak." : "Order ditolak.");
          await fetchOrders();
          if (selectedOrderId === order.id) {
             await fetchOrderItems(order.id);
          }
       } catch (error) {
          console.error("handleReject error:", error);
-         setErrorMessage(error?.message || "Gagal menolak order.");
+         toast.error(error?.message || "Gagal menolak order.");
       } finally {
          setActionLoading(false);
       }
@@ -336,9 +331,6 @@ export default function OrderSiswaPage() {
             <Loading message="Memuat order siswa..." />
          ) : (
             <>
-               {errorMessage && <div className="page-message page-message--error">{errorMessage}</div>}
-               {message && <div className="page-message page-message--success">{message}</div>}
-
                <div className="order-siswa-summary">
                   <div className="summary-card summary-card--accent">
                      <span className="summary-card__label">Total Order</span>
