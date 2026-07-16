@@ -273,8 +273,8 @@ export default function BeliProdukGuruPage() {
 
    return (
       <div className="guru-beli-produk">
-         {message && <div style={{ padding: "1rem", marginBottom: "1rem", backgroundColor: "#d4edda", color: "#155724", borderRadius: "4px" }}>{message}</div>}
-         {errorMessage && <div style={{ padding: "1rem", marginBottom: "1rem", backgroundColor: "#f8d7da", color: "#721c24", borderRadius: "4px" }}>{errorMessage}</div>}
+         {message && <div className="page-message page-message--success">{message}</div>}
+         {errorMessage && <div className="page-message page-message--error">{errorMessage}</div>}
 
          <div className="beli-produk-section">
             <div>
@@ -283,7 +283,7 @@ export default function BeliProdukGuruPage() {
                   placeholder="Cari produk..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: "100%", padding: "0.5rem", marginBottom: "1rem", border: "1px solid #ccc", borderRadius: "4px" }}
+                  className="beli-produk-search"
                />
                <div className="beli-produk-products">
                   {filteredProducts.map((product) => {
@@ -310,8 +310,7 @@ export default function BeliProdukGuruPage() {
                               />
                               <button
                                  onClick={() => addToCart(product)}
-                                 className="btn btn--primary"
-                                 style={{ fontSize: "0.85rem", padding: "0.25rem 0.75rem" }}
+                                 className="btn btn--primary product-card__add"
                               >
                                  {cartItem ? "+" : "Tambah"}
                               </button>
@@ -326,7 +325,7 @@ export default function BeliProdukGuruPage() {
                <div className="beli-produk-cart__title">Keranjang</div>
 
                {cartItems.length === 0 ? (
-                  <div style={{ color: "#999", textAlign: "center", padding: "1rem" }}>Keranjang kosong</div>
+                  <div className="beli-produk-empty">Keranjang kosong</div>
                ) : (
                   <>
                      <div className="cart-items">
@@ -369,7 +368,7 @@ export default function BeliProdukGuruPage() {
                         </select>
                      </div>
 
-                     <button onClick={handleSubmitOrder} disabled={submitting} className="btn btn--primary" style={{ width: "100%" }}>
+                     <button onClick={handleSubmitOrder} disabled={submitting} className="btn btn--primary beli-produk-cart__submit">
                         {submitting ? "Memproses..." : "Pesan Sekarang"}
                      </button>
                   </>
@@ -380,44 +379,46 @@ export default function BeliProdukGuruPage() {
          <div className="orders-section">
             <div className="orders-section__title">Riwayat Transaksi</div>
             {orders.length === 0 ? (
-               <div style={{ color: "#999", textAlign: "center", padding: "1rem" }}>Tidak ada transaksi.</div>
+               <div className="beli-produk-empty">Tidak ada transaksi.</div>
             ) : (
-               <table className="orders-table">
-                  <thead>
-                     <tr>
-                        <th>Tanggal</th>
-                        <th>Jenis</th>
-                        <th>Metode</th>
-                        <th>Status</th>
-                        <th>Nominal</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     {orders.map((order) => (
-                        <tr key={`${order.source}-${order.id}`}>
-                           <td>{new Date(order.created_at).toLocaleDateString("id-ID")}</td>
-                           <td>
-                              <span className={`source-badge source-badge--${order.source}`}>
-                                 {order.source === "order" ? "Pesanan" : "Kasir"}
-                              </span>
-                           </td>
-                           <td>{order.payment_method ?? order.metode_pembayaran ?? "-"}</td>
-                           <td>
-                              {order.source === "order" ? (
-                                 <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
-                                    {order.status_order ?? "-"}
-                                 </span>
-                              ) : (
-                                 <span className={`status-badge ${(order.payment_status ?? order.status_pembayaran) === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
-                                    {order.payment_status ?? order.status_pembayaran ?? "-"}
-                                 </span>
-                              )}
-                           </td>
-                           <td>Rp {Number(order.total_harga).toLocaleString("id-ID")}</td>
+               <div className="orders-table-wrap">
+                  <table className="orders-table">
+                     <thead>
+                        <tr>
+                           <th>Tanggal</th>
+                           <th>Jenis</th>
+                           <th>Metode</th>
+                           <th>Status</th>
+                           <th>Nominal</th>
                         </tr>
-                     ))}
-                  </tbody>
-               </table>
+                     </thead>
+                     <tbody>
+                        {orders.map((order) => (
+                           <tr key={`${order.source}-${order.id}`}>
+                              <td>{new Date(order.created_at).toLocaleDateString("id-ID")}</td>
+                              <td>
+                                 <span className={`source-badge source-badge--${order.source}`}>
+                                    {order.source === "order" ? "Pesanan" : "Kasir"}
+                                 </span>
+                              </td>
+                              <td>{order.payment_method ?? order.metode_pembayaran ?? "-"}</td>
+                              <td>
+                                 {order.source === "order" ? (
+                                    <span className={`status-badge ${order.status_order === "Dikonfirmasi" ? "status-badge--success" : order.status_order === "Ditolak" ? "status-badge--error" : "status-badge--warning"}`}>
+                                       {order.status_order ?? "-"}
+                                    </span>
+                                 ) : (
+                                    <span className={`status-badge ${(order.payment_status ?? order.status_pembayaran) === "Lunas" ? "status-badge--success" : "status-badge--error"}`}>
+                                       {order.payment_status ?? order.status_pembayaran ?? "-"}
+                                    </span>
+                                 )}
+                              </td>
+                              <td>Rp {Number(order.total_harga).toLocaleString("id-ID")}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
             )}
          </div>
       </div>

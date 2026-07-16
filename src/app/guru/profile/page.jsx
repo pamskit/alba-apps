@@ -9,6 +9,9 @@ import "./settings.css";
 export default function GuruProfilePage() {
    const { teacher, loading } = useTeacherProfile();
 
+   const saldoText = teacher ? `Rp ${Number(teacher.saldo ?? 0).toLocaleString("id-ID")}` : "-";
+   const hutangText = teacher ? `Rp ${Number(teacher.total_hutang ?? 0).toLocaleString("id-ID")}` : "-";
+
    async function handlePasswordChange(values) {
       const response = await fetch("/api/auth/change-password", {
          method: "POST",
@@ -34,6 +37,17 @@ export default function GuruProfilePage() {
          <div className="profile-page__header">
             <h1>Profil</h1>
             <p>Informasi akun guru dan fitur perubahan password.</p>
+
+            <div className="profile-page__stats" aria-label="Ringkasan akun guru">
+               <div className="profile-page__stat-card">
+                  <span className="profile-page__stat-label">Saldo</span>
+                  <strong className="profile-page__stat-value">{loading ? "Memuat..." : saldoText}</strong>
+               </div>
+               <div className="profile-page__stat-card">
+                  <span className="profile-page__stat-label">Total Hutang</span>
+                  <strong className="profile-page__stat-value">{loading ? "Memuat..." : hutangText}</strong>
+               </div>
+            </div>
          </div>
 
          <div className="profile-grid">
@@ -44,7 +58,7 @@ export default function GuruProfilePage() {
                emptyMessage="Data guru tidak tersedia."
             />
             <section className="profile-card">
-               <PasswordChangeForm onSubmit={handlePasswordChange} submitLabel="Perbarui Password" />
+               <PasswordChangeForm onSubmit={handlePasswordChange} title="Keamanan Akun" submitLabel="Perbarui Password" />
             </section>
          </div>
       </div>

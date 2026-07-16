@@ -1,33 +1,57 @@
 .guru-beli-produk {
-   padding: 1rem;
+   padding: 1.25rem;
+   display: grid;
+   gap: 1rem;
+   border: 1px solid #dbe5ef;
+   border-radius: 18px;
+   background: linear-gradient(180deg, #f8fbff 0%, #ffffff 240px);
 }
 
 .beli-produk-section {
    display: grid;
-   grid-template-columns: 1fr 400px;
+   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
    gap: 2rem;
-   margin-bottom: 2rem;
+   align-items: start;
+}
+
+.beli-produk-search {
+   width: 100%;
+   min-height: 46px;
+   padding: 0.75rem 0.95rem;
+   margin-bottom: 1rem;
+   border: 1px solid #bfd0e2;
+   border-radius: 12px;
+   background: #ffffff;
+   font-size: 0.95rem;
+}
+
+.beli-produk-search:focus {
+   outline: none;
+   border-color: #5b61ff;
+   box-shadow: 0 0 0 4px rgba(91, 97, 255, 0.12);
 }
 
 .beli-produk-products {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-   gap: 1rem;
+   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+   gap: 14px;
 }
 
 .product-card {
-   background: white;
-   border: 1px solid #e0e0e0;
-   border-radius: 8px;
-   padding: 1rem;
+   background: #ffffff;
+   border: 1px solid #dbe5ef;
+   border-radius: 14px;
+   padding: 1rem 1rem 0.95rem;
    display: flex;
    flex-direction: column;
+   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .product-card__name {
    font-weight: 600;
-   margin-bottom: 0.5rem;
+   margin-bottom: 0.6rem;
    color: #2c3e50;
+   line-height: 1.35;
 }
 
 .product-card__info {
@@ -40,44 +64,53 @@
 .product-card__price {
    font-size: 1.1rem;
    font-weight: bold;
-   color: #27ae60;
+   color: #0f766e;
 }
 
 .product-card__stok {
-   font-size: 0.85rem;
-   color: #666;
+   font-size: 0.86rem;
+   color: #475569;
 }
 
 .product-card__actions {
    display: flex;
-   gap: 0.5rem;
+   gap: 0.65rem;
    align-items: center;
 }
 
 .product-card__input {
    flex: 1;
-   padding: 0.25rem;
-   border: 1px solid #ccc;
-   border-radius: 4px;
+   min-height: 40px;
+   padding: 0.45rem 0.5rem;
+   border: 1px solid #cbd5e1;
+   border-radius: 10px;
    text-align: center;
 }
 
+.product-card__add {
+   min-height: 40px;
+   padding: 0.45rem 0.8rem;
+   font-size: 0.83rem;
+   font-weight: 700;
+}
+
 .beli-produk-cart {
-   background: white;
-   border: 1px solid #e0e0e0;
-   border-radius: 8px;
+   background: #ffffff;
+   border: 1px solid #dbe5ef;
+   border-radius: 14px;
    padding: 1.5rem;
    height: fit-content;
    position: sticky;
-   top: 1rem;
+   top: 1.25rem;
+   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
 .beli-produk-cart__title {
    font-size: 1.1rem;
    font-weight: 600;
    margin-bottom: 1rem;
-   padding-bottom: 1rem;
-   border-bottom: 2px solid #e0e0e0;
+   padding-bottom: 0.9rem;
+   border-bottom: 1px solid #e2e8f0;
 }
 
 .cart-items {
@@ -92,8 +125,9 @@
    display: flex;
    justify-content: space-between;
    align-items: center;
-   padding: 0.5rem;
-   border-bottom: 1px solid #f0f0f0;
+   padding: 0.55rem;
+   border-bottom: 1px solid #eef2f7;
+   border-radius: 10px;
 }
 
 .cart-item__name {
@@ -102,21 +136,22 @@
 }
 
 .cart-item__qty {
-   color: #666;
+   color: #475569;
    font-size: 0.85rem;
 }
 
 .cart-item__remove {
    cursor: pointer;
-   color: #e74c3c;
+   color: #dc2626;
    font-weight: bold;
 }
 
 .cart-summary {
-   background: #f5f5f5;
+   background: #f8fafc;
    padding: 1rem;
-   border-radius: 4px;
+   border-radius: 10px;
    margin-bottom: 1rem;
+   border: 1px solid #e2e8f0;
 }
 
 .cart-summary__item {
@@ -142,23 +177,36 @@
 
 .payment-method__label {
    display: block;
-   font-size: 0.85rem;
+   font-size: 0.88rem;
    font-weight: 600;
    margin-bottom: 0.5rem;
-   color: #666;
+   color: #475569;
 }
 
 .payment-method__select {
    width: 100%;
-   padding: 0.5rem;
-   border: 1px solid #ccc;
-   border-radius: 4px;
+   min-height: 44px;
+   padding: 0.55rem 0.75rem;
+   border: 1px solid #cbd5e1;
+   border-radius: 10px;
+}
+
+.payment-method__select:focus {
+   outline: none;
+   border-color: #5b61ff;
+   box-shadow: 0 0 0 4px rgba(91, 97, 255, 0.12);
+}
+
+.beli-produk-cart__submit {
+   width: 100%;
+   min-height: 44px;
+   font-weight: 700;
 }
 
 .orders-section {
-   background: white;
-   border: 1px solid #e0e0e0;
-   border-radius: 8px;
+   background: #ffffff;
+   border: 1px solid #dbe5ef;
+   border-radius: 14px;
    padding: 1.5rem;
 }
 
@@ -166,17 +214,24 @@
    font-size: 1.1rem;
    font-weight: 600;
    margin-bottom: 1rem;
-   padding-bottom: 1rem;
-   border-bottom: 2px solid #e0e0e0;
+   padding-bottom: 0.9rem;
+   border-bottom: 1px solid #e2e8f0;
+}
+
+.orders-table-wrap {
+   overflow-x: auto;
+   border: 1px solid #e2e8f0;
+   border-radius: 12px;
 }
 
 .orders-table {
    width: 100%;
    border-collapse: collapse;
+   min-width: 620px;
 }
 
 .orders-table thead {
-   background: #f5f5f5;
+   background: #f1f5f9;
 }
 
 .orders-table th {
@@ -189,16 +244,16 @@
 
 .orders-table td {
    padding: 0.75rem;
-   border-bottom: 1px solid #f0f0f0;
+   border-bottom: 1px solid #eef2f7;
    font-size: 0.9rem;
 }
 
 .status-badge {
    display: inline-block;
-   padding: 0.25rem 0.75rem;
-   border-radius: 4px;
+   padding: 0.3rem 0.75rem;
+   border-radius: 999px;
    font-size: 0.8rem;
-   font-weight: 500;
+   font-weight: 600;
 }
 
 .status-badge--success {
@@ -218,10 +273,10 @@
 
 .source-badge {
    display: inline-block;
-   padding: 0.25rem 0.75rem;
-   border-radius: 4px;
+   padding: 0.3rem 0.75rem;
+   border-radius: 999px;
    font-size: 0.8rem;
-   font-weight: 500;
+   font-weight: 600;
 }
 
 .source-badge--order {
@@ -234,9 +289,39 @@
    color: #383d41;
 }
 
+.page-message {
+   padding: 0.9rem 1rem;
+   margin-bottom: 0;
+   border-radius: 10px;
+   border: 1px solid transparent;
+}
+
+.page-message--success {
+   background-color: #d4edda;
+   color: #155724;
+   border-color: #86efac;
+}
+
+.page-message--error {
+   background-color: #f8d7da;
+   color: #721c24;
+   border-color: #fca5a5;
+}
+
+.beli-produk-empty {
+   color: #64748b;
+   text-align: center;
+   padding: 1rem;
+}
+
 @media (max-width: 768px) {
+   .guru-beli-produk {
+      padding: 0.85rem;
+   }
+
    .beli-produk-section {
       grid-template-columns: 1fr;
+      gap: 1rem;
    }
 
    .beli-produk-cart {
@@ -245,6 +330,11 @@
    }
 
    .beli-produk-products {
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+   }
+
+   .orders-section,
+   .beli-produk-cart {
+      padding: 1rem;
    }
 }
