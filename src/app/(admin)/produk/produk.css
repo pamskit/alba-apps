@@ -185,6 +185,7 @@
    width: 100%;
    border-collapse: collapse;
    min-width: 860px;
+   table-layout: fixed;
 }
 
 .produk-table th,
@@ -192,6 +193,32 @@
    padding: 14px 16px;
    border-bottom: 1px solid #eef2f7;
    font-size: 0.95rem;
+   vertical-align: middle;
+}
+
+.produk-table th:nth-child(1),
+.produk-table td:nth-child(1) {
+   width: 36%;
+}
+
+.produk-table th:nth-child(2),
+.produk-table td:nth-child(2) {
+   width: 18%;
+}
+
+.produk-table th:nth-child(3),
+.produk-table td:nth-child(3) {
+   width: 18%;
+}
+
+.produk-table th:nth-child(4),
+.produk-table td:nth-child(4) {
+   width: 16%;
+}
+
+.produk-table th:nth-child(5),
+.produk-table td:nth-child(5) {
+   width: 12%;
 }
 
 .produk-table th {
@@ -235,13 +262,14 @@
 
 .produk-table__cell-input {
    width: 100%;
-   min-width: 120px;
+   min-width: 0;
    border: 1px solid #cbd5e1;
    border-radius: 10px;
    padding: 9px 11px;
    text-align: left;
    background: #ffffff;
    font-size: 0.92rem;
+   box-sizing: border-box;
 }
 
 .produk-table__cell-input:focus {
@@ -255,7 +283,7 @@
 }
 
 .produk-table__actions-cell {
-   min-width: 96px;
+   min-width: 82px;
 }
 
 .produk-actions {

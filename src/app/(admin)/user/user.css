@@ -61,10 +61,10 @@
 
 .user-page__panel {
    background: #ffffff;
-   border: 1px solid #e5e7eb;
+   border: 1px solid #dfe5ee;
    border-radius: 20px;
    padding: 24px;
-   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05);
 }
 
 .user-form {
@@ -96,6 +96,11 @@
    background: #f8fafc;
 }
 
+.user-form__input--readonly {
+   background: #f1f5f9;
+   color: #64748b;
+}
+
 .user-form__input:focus {
    outline: none;
    border-color: #0ea5a4;
@@ -114,26 +119,103 @@
 }
 
 .user-page__table-panel {
-   padding: 0;
+   padding: 20px;
+}
+
+.user-panel-head {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+}
+
+.user-panel-head__meta {
+   display: grid;
+   gap: 6px;
+}
+
+.user-panel-head h2 {
+   margin: 0;
+   font-size: 1.2rem;
+}
+
+.user-panel-head__meta p {
+   margin: 0;
+   color: #64748b;
+   font-size: 0.92rem;
+}
+
+.user-panel-head .user-form__button {
+   width: auto;
+   min-width: 170px;
+   box-shadow: none;
+}
+
+.user-table-head {
+   display: flex;
+   align-items: baseline;
+   justify-content: space-between;
+   gap: 10px;
+   margin: 0 0 12px;
+   padding: 0 10px;
+}
+
+.user-table-head h3 {
+   margin: 0;
+   font-size: 1.05rem;
+}
+
+.user-table-head p {
+   margin: 0;
+   color: #64748b;
+   font-size: 0.9rem;
 }
 
 .user-table-wrap {
    overflow: auto;
-   border-radius: 18px;
-   border: 1px solid #e5e7eb;
-   box-shadow: 0 14px 35px rgba(15, 23, 42, 0.06);
+   border-radius: 14px;
+   border: 1px solid #e2e8f0;
+   box-shadow: none;
 }
 
 .user-table {
    width: 100%;
    border-collapse: collapse;
-   min-width: 720px;
+   min-width: 760px;
+   table-layout: fixed;
 }
 
 .user-table th,
 .user-table td {
-   padding: 18px 20px;
-   border-bottom: 1px solid #e5e7ef;
+   padding: 13px 14px;
+   border-bottom: 1px solid #eef2f7;
+   vertical-align: middle;
+}
+
+.user-table th:nth-child(1),
+.user-table td:nth-child(1) {
+   width: 15%;
+}
+
+.user-table th:nth-child(2),
+.user-table td:nth-child(2) {
+   width: 34%;
+}
+
+.user-table th:nth-child(3),
+.user-table td:nth-child(3) {
+   width: 25%;
+}
+
+.user-table th:nth-child(4),
+.user-table td:nth-child(4) {
+   width: 17%;
+}
+
+.user-table th:nth-child(5),
+.user-table td:nth-child(5) {
+   width: 10%;
+   padding-right: 20px;
 }
 
 .user-table th {
@@ -144,12 +226,12 @@
    color: #475569;
    font-weight: 700;
    letter-spacing: 0.02em;
-   text-transform: uppercase;
+   text-transform: none;
    z-index: 1;
 }
 
 .user-table__numeric {
-   text-align: right;
+   text-align: left;
 }
 
 .user-table tbody tr {
@@ -161,45 +243,73 @@
 }
 
 .user-table tbody tr:nth-child(odd) {
-   background: #fcfdff;
+   background: #ffffff;
 }
 
 .user-table__input {
    width: 100%;
+   min-width: 0;
    border: 1px solid #cbd5e1;
    border-radius: 12px;
    padding: 10px 12px;
    background: #ffffff;
+   box-sizing: border-box;
+}
+
+.user-table__input:focus {
+   outline: none;
+   border-color: #0ea5a4;
+   box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.12);
+}
+
+.user-table__actions-cell {
+   min-width: 80px;
 }
 
 .user-actions {
    display: flex;
-   flex-wrap: wrap;
-   gap: 8px;
+   flex-wrap: nowrap;
+   align-items: center;
+   justify-content: flex-end;
+   gap: 6px;
 }
 
 .user-actions__button {
-   min-height: 38px;
-   padding: 0 14px;
-   border-radius: 12px;
-   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+   width: 34px;
+   min-width: 34px;
+   height: 34px;
+   min-height: 34px;
+   padding: 0;
+   border-radius: 9px;
+   box-shadow: none;
    background: #ffffff;
    border: 1px solid #cbd5e1;
    color: #0f172a;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
 }
 
 .user-actions__button:hover {
-   background: #eef2ff;
+   background: #eef2f7;
 }
 
-.user-actions__button--secondary {
-   background: #f8fafc;
-   border-color: #cbd5e1;
-   color: #475569;
+.user-actions__button:focus-visible {
+   outline: none;
+   border-color: #0ea5a4;
+   box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.12);
 }
 
-.user-actions__button--secondary:hover {
-   background: #e2e8f0;
+.user-actions__button--save {
+   width: 36px;
+   min-width: 36px;
+   height: 36px;
+   min-height: 36px;
+}
+
+.user-actions__button--cancel {
+   width: 34px;
+   min-width: 34px;
 }
 
 .user-actions__button.btn--danger {
@@ -257,17 +367,100 @@
    color: #64748b;
 }
 
+.user-modal {
+   position: fixed;
+   inset: 0;
+   background: rgba(15, 23, 42, 0.45);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 20px;
+   z-index: 50;
+}
+
+.user-modal__card {
+   width: min(880px, 100%);
+   background: #ffffff;
+   border-radius: 22px;
+   border: 1px solid #e5e7eb;
+   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+   padding: 24px;
+}
+
+.user-modal__header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+   margin-bottom: 16px;
+}
+
+.user-modal__header h2 {
+   margin: 0;
+   font-size: 1.2rem;
+}
+
+.user-modal__close {
+   min-height: 38px;
+}
+
+.user-modal__footer {
+   grid-column: 1 / -1;
+   display: flex;
+   justify-content: flex-end;
+   gap: 10px;
+}
+
+.user-modal__footer .user-form__button {
+   width: auto;
+   min-width: 180px;
+   box-shadow: none;
+}
+
 @media (max-width: 900px) {
    .user-form {
       grid-template-columns: 1fr;
+   }
+
+   .user-panel-head {
+      flex-direction: column;
+      align-items: stretch;
+   }
+
+   .user-table-head {
+      flex-direction: column;
+      align-items: flex-start;
+   }
+
+   .user-actions {
+      flex-wrap: wrap;
+      align-items: flex-start;
    }
 
    .user-table {
       min-width: 100%;
    }
 
-   .user-actions {
+   .user-modal {
+      align-items: flex-end;
+      padding: 10px;
+   }
+
+   .user-modal__card {
+      border-radius: 16px;
+      padding: 18px;
+   }
+
+   .user-modal__header {
       flex-direction: column;
-      align-items: stretch;
+      align-items: flex-start;
+   }
+
+   .user-modal__footer {
+      flex-direction: column-reverse;
+   }
+
+   .user-modal__footer .btn {
+      width: 100%;
    }
 }
