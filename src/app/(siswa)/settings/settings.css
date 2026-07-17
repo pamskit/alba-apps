@@ -5,6 +5,8 @@
    border: 1px solid #dbe5ef;
    border-radius: 18px;
    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 220px);
+   min-width: 0;
+   overflow: hidden;
 }
 
 .profile-page__header {
@@ -29,6 +31,7 @@
    display: grid;
    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
    gap: 10px;
+   min-width: 0;
 }
 
 .profile-page__stat-card {
@@ -38,6 +41,7 @@
    border-radius: 12px;
    border: 1px solid #dbe5ef;
    background: #ffffff;
+   min-width: 0;
 }
 
 .profile-page__stat-label {
@@ -48,12 +52,14 @@
 .profile-page__stat-value {
    font-size: 1.05rem;
    color: #0f172a;
+   overflow-wrap: anywhere;
 }
 
 .profile-grid {
    display: grid;
    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
    gap: 14px;
+   min-width: 0;
 }
 
 .profile-card {
@@ -62,6 +68,7 @@
    border-radius: 14px;
    padding: 1rem;
    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+   min-width: 0;
 }
 
 .profile-card h2 {
@@ -81,6 +88,7 @@
    display: flex;
    justify-content: space-between;
    gap: 10px;
+   min-width: 0;
    padding-bottom: 8px;
    border-bottom: 1px dashed #e2e8f0;
 }
@@ -99,6 +107,8 @@
    color: #0f172a;
    font-weight: 600;
    text-align: right;
+   min-width: 0;
+   overflow-wrap: anywhere;
 }
 
 .profile-card__empty {

@@ -1,4 +1,6 @@
 .history-table-wrap {
+   width: 100%;
+   max-width: 100%;
    overflow-x: auto;
    border: 1px solid #e2e8f0;
    border-radius: 14px;
@@ -8,6 +10,7 @@
 .history-table {
    width: 100%;
    border-collapse: collapse;
+   min-width: 620px;
 }
 
 .history-table th,

@@ -5,7 +5,19 @@
 BEGIN;
 
 -- 1) Bersihkan data
-TRUNCATE TABLE saldo_log, detail_transaksi, transaksi, produk, guru, siswa
+TRUNCATE TABLE
+  detail_order_siswa,
+  detail_order_guru,
+  saldo_log,
+  detail_transaksi,
+  order_siswa,
+  order_guru,
+  topup_saldo,
+  topup_saldo_guru,
+  transaksi,
+  produk,
+  guru,
+  siswa
 RESTART IDENTITY CASCADE;
 
 -- 2) Seed siswa (40 baris, nama realistis)
@@ -297,7 +309,97 @@ SELECT
   GREATEST(1000, o.amount_total - GREATEST(1000, (o.amount_total * 60) / 100)) AS sub_total
 FROM order_rows o;
 
--- 11) Seed saldo_log dari topup
+-- 11) Seed legacy order_siswa dari transaksi order siswa
+INSERT INTO order_siswa (
+  id, created_at, nis_siswa, total_harga, metode_pembayaran,
+  status_order, status_pembayaran, keterangan
+)
+SELECT
+  t.id,
+  t.created_at,
+  t.nis_siswa,
+  t.amount_total,
+  t.payment_method,
+  t.order_status,
+  t.payment_status,
+  t.note
+FROM transaksi t
+WHERE t.transaction_type = 'order'
+  AND t.customer_type = 'siswa'
+  AND t.nis_siswa IS NOT NULL;
+
+-- 12) Seed legacy order_guru dari transaksi order guru
+INSERT INTO order_guru (
+  id, created_at, nip_guru, total_harga, metode_pembayaran,
+  status_order, status_pembayaran, keterangan
+)
+SELECT
+  t.id,
+  t.created_at,
+  t.nip_guru,
+  t.amount_total,
+  t.payment_method,
+  t.order_status,
+  t.payment_status,
+  t.note
+FROM transaksi t
+WHERE t.transaction_type = 'order'
+  AND t.customer_type = 'guru'
+  AND t.nip_guru IS NOT NULL;
+
+-- 13) Seed detail_order_siswa dari detail_transaksi
+INSERT INTO detail_order_siswa (order_id, produk_id, jumlah, harga_satuan)
+SELECT
+  dt.transaksi_id AS order_id,
+  dt.produk_id,
+  dt.jumlah,
+  dt.harga_satuan
+FROM detail_transaksi dt
+JOIN transaksi t ON t.id = dt.transaksi_id
+WHERE t.transaction_type = 'order'
+  AND t.customer_type = 'siswa';
+
+-- 14) Seed detail_order_guru dari detail_transaksi
+INSERT INTO detail_order_guru (order_id, produk_id, jumlah, harga_satuan)
+SELECT
+  dt.transaksi_id AS order_id,
+  dt.produk_id,
+  dt.jumlah,
+  dt.harga_satuan
+FROM detail_transaksi dt
+JOIN transaksi t ON t.id = dt.transaksi_id
+WHERE t.transaction_type = 'order'
+  AND t.customer_type = 'guru';
+
+-- 15) Seed legacy topup_saldo dari transaksi topup siswa
+INSERT INTO topup_saldo (created_at, nis_siswa, tipe, metode, jumlah, keterangan)
+SELECT
+  t.created_at,
+  t.nis_siswa,
+  'Top-up' AS tipe,
+  t.payment_method AS metode,
+  t.amount_total AS jumlah,
+  t.note AS keterangan
+FROM transaksi t
+WHERE t.transaction_type = 'topup'
+  AND t.customer_type = 'siswa'
+  AND t.nis_siswa IS NOT NULL;
+
+-- 16) Seed legacy topup_saldo_guru dari transaksi topup guru
+INSERT INTO topup_saldo_guru (created_at, nip_guru, tipe, metode, jumlah, keterangan)
+SELECT
+  t.created_at,
+  t.nip_guru,
+  'Top-up' AS tipe,
+  t.payment_method AS metode,
+  t.amount_total AS jumlah,
+  t.note AS keterangan
+FROM transaksi t
+WHERE t.transaction_type = 'topup'
+  AND t.customer_type = 'guru'
+  AND t.nip_guru IS NOT NULL;
+
+-- 17) Seed saldo_log dari topup
 INSERT INTO saldo_log (
   created_at, customer_type, nis_siswa, nip_guru, transaksi_id, log_type,
   amount, balance_before, balance_after, payment_method, note
@@ -317,7 +419,7 @@ SELECT
 FROM transaksi t
 WHERE t.transaction_type = 'topup';
 
--- 12) Seed saldo_log untuk order saldo (debit)
+-- 18) Seed saldo_log untuk order saldo (debit)
 INSERT INTO saldo_log (
   created_at, customer_type, nis_siswa, nip_guru, transaksi_id, log_type,
   amount, balance_before, balance_after, payment_method, note
@@ -341,10 +443,16 @@ WHERE t.transaction_type = 'order'
 
 COMMIT;
 
--- 13) Verifikasi cepat
+-- 19) Verifikasi cepat
 SELECT COUNT(*) AS total_siswa FROM siswa;
 SELECT COUNT(*) AS total_guru FROM guru;
 SELECT COUNT(*) AS total_produk FROM produk;
+SELECT COUNT(*) AS total_order_siswa FROM order_siswa;
+SELECT COUNT(*) AS total_detail_order_siswa FROM detail_order_siswa;
+SELECT COUNT(*) AS total_order_guru FROM order_guru;
+SELECT COUNT(*) AS total_detail_order_guru FROM detail_order_guru;
+SELECT COUNT(*) AS total_topup_saldo FROM topup_saldo;
+SELECT COUNT(*) AS total_topup_saldo_guru FROM topup_saldo_guru;
 SELECT COUNT(*) AS total_transaksi FROM transaksi;
 SELECT COUNT(*) AS total_detail_transaksi FROM detail_transaksi;
 SELECT COUNT(*) AS total_saldo_log FROM saldo_log;

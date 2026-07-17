@@ -1,12 +1,14 @@
 .dashboard-page {
    display: grid;
    gap: 1.25rem;
+   min-width: 0;
 }
 
 .dashboard-overview {
    display: grid;
    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
    gap: 1rem;
+   min-width: 0;
 }
 
 .dashboard-card {
@@ -15,6 +17,7 @@
    border-radius: 16px;
    padding: 1rem 1.1rem;
    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05);
+   min-width: 0;
 }
 
 .dashboard-card--profile {
@@ -55,6 +58,11 @@
    border-bottom: 1px dashed #e2e8f0;
 }
 
+.dashboard-card__field span:last-child {
+   text-align: right;
+   word-break: break-word;
+}
+
 .dashboard-card__field:last-child {
    padding-bottom: 0;
    border-bottom: 0;
@@ -62,12 +70,14 @@
 
 .dashboard-card__label {
    color: #6b7280;
+   min-width: 0;
 }
 
 .dashboard-card__value-wrap {
    display: flex;
    flex-direction: column;
    gap: 6px;
+   min-width: 0;
 }
 
 .dashboard-card__value {
@@ -90,6 +100,7 @@
 .dashboard-card__meta {
    color: #6b7280;
    font-size: 0.87rem;
+   overflow-wrap: anywhere;
 }
 
 .section-header {
@@ -106,9 +117,12 @@
 .section-header__subtitle {
    margin: 0;
    color: #6b7280;
+   overflow-wrap: anywhere;
 }
 
 .transaction-table-wrap {
+   width: 100%;
+   max-width: 100%;
    overflow-x: auto;
    border: 1px solid #dbe5ef;
    border-radius: 12px;
@@ -118,6 +132,7 @@
 .transaction-table {
    width: 100%;
    border-collapse: collapse;
+   min-width: 640px;
 }
 
 .transaction-table__head {
@@ -176,5 +191,52 @@
 
    .dashboard-card--profile {
       grid-column: 1;
+   }
+
+   .dashboard-card {
+      padding: 0.9rem;
+      border-radius: 14px;
+   }
+
+   .dashboard-card__heading {
+      font-size: 0.96rem;
+      margin-bottom: 10px;
+   }
+
+   .dashboard-card__value {
+      font-size: 1.3rem;
+   }
+
+   .section-header__title {
+      font-size: 1.02rem;
+   }
+
+   .section-header__subtitle {
+      font-size: 0.88rem;
+      line-height: 1.45;
+   }
+
+   .transaction-table__head,
+   .transaction-table__cell {
+      padding: 10px;
+      font-size: 0.86rem;
+      white-space: nowrap;
+   }
+}
+
+@media (max-width: 480px) {
+   .dashboard-card__field {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+   }
+
+   .dashboard-card__field span:last-child {
+      text-align: left;
+      width: 100%;
+   }
+
+   .dashboard-card__meta {
+      font-size: 0.82rem;
    }
 }

@@ -506,7 +506,7 @@ export default function LaporanPage() {
                      </div>
                   </div>
 
-                  <div className="laporan-page__table-wrap">
+                  <div className="laporan-page__table-wrap laporan-page__table-wrap--scroll">
                      <table className="laporan-table">
                         <thead>
                            <tr>
@@ -632,7 +632,7 @@ export default function LaporanPage() {
                      </div>
                   </div>
 
-                  <div className="laporan-page__table-wrap">
+                  <div className="laporan-page__table-wrap laporan-page__table-wrap--scroll">
                      <table className="laporan-table">
                         <thead>
                            <tr>

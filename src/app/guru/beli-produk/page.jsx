@@ -277,7 +277,7 @@ export default function BeliProdukGuruPage() {
          {errorMessage && <div className="page-message page-message--error">{errorMessage}</div>}
 
          <div className="beli-produk-section">
-            <div>
+            <div className="beli-produk-catalog">
                <input
                   type="text"
                   placeholder="Cari produk..."
