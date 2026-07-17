@@ -1,5 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase';
+import {
+  DATE_FILTER_OPTIONS,
+  getDateRangeByFilter,
+  calculateAdminMetrics,
+  buildSalesChartData,
+} from '@/utils/admin-metrics';
 
 const supabase = createClient();
 
@@ -8,18 +14,15 @@ const supabase = createClient();
  */
 export const PERIOD_OPTIONS = {
   '1_week': {
-    label: '1 Minggu Terakhir',
-    days: 7,
+    label: DATE_FILTER_OPTIONS['1_week'].label,
     key: '1_week',
   },
   '1_month': {
-    label: '1 Bulan Terakhir',
-    days: 30,
+    label: DATE_FILTER_OPTIONS['1_month'].label,
     key: '1_month',
   },
   '1_year': {
-    label: '1 Tahun Terakhir',
-    days: 365,
+    label: DATE_FILTER_OPTIONS['1_year'].label,
     key: '1_year',
   },
 };
@@ -53,12 +56,7 @@ export default function useDashboardSummary(period = '1_week') {
    * Calculate date range based on period
    */
   const dateRange = useMemo(() => {
-    const now = new Date();
-    const config = PERIOD_OPTIONS[period];
-
-    const start = new Date();
-    start.setDate(start.getDate() - config.days);
-    return { start, end: now };
+    return getDateRangeByFilter(period);
   }, [period]);
 
   /**
@@ -77,10 +75,14 @@ export default function useDashboardSummary(period = '1_week') {
         let orderGuruQuery = supabase.from('order_guru').select('id,total_harga,status_order,created_at,nip_guru');
         let detailOrderGuruQuery = supabase.from('detail_order_guru').select('order_id,produk_id,jumlah,harga_satuan');
 
-        const startISO = dateRange.start.toISOString();
+        const startISO = dateRange.startISO;
+        const endISO = dateRange.endISO;
         transactionQuery = transactionQuery.gte('created_at', startISO);
+        transactionQuery = transactionQuery.lte('created_at', endISO);
         orderSiswaQuery = orderSiswaQuery.gte('created_at', startISO);
+        orderSiswaQuery = orderSiswaQuery.lte('created_at', endISO);
         orderGuruQuery = orderGuruQuery.gte('created_at', startISO);
+        orderGuruQuery = orderGuruQuery.lte('created_at', endISO);
 
         // Fetch products separately (no date filter needed)
         const [
@@ -123,149 +125,49 @@ export default function useDashboardSummary(period = '1_week') {
     fetchData();
   }, [period, dateRange]);
 
-  /**
-   * Filter only "Lunas" transactions from transaksi table
-   */
-  const validTransactions = useMemo(() => {
-    // Exclude debt payment transactions from omzet calculation.
-    return (transactions ?? []).filter((item) => item.payment_status === 'Lunas' && item.transaction_type !== 'hutang_payment');
-  }, [transactions]);
-
-  /**
-   * Filter confirmed orders from legacy tables
-   */
-  const confirmedOrdersSiswa = useMemo(() => {
-    return (ordersSiswa ?? []).filter((order) => order.status_order === 'Dikonfirmasi');
-  }, [ordersSiswa]);
-
-  const confirmedOrdersGuru = useMemo(() => {
-    return (ordersGuru ?? []).filter((order) => order.status_order === 'Dikonfirmasi');
-  }, [ordersGuru]);
-
-  /**
-   * METRIC 1: OMZET (Total Revenue)
-   * Sum of all completed transactions' amount_total
-   */
-  const omzet = useMemo(() => {
-    let total = 0;
-
-    // From new transaksi table
-    validTransactions.forEach((item) => {
-      total += Number(item.amount_total || 0);
+  const metrics = useMemo(() => {
+    return calculateAdminMetrics({
+      products,
+      transactions,
+      detailTransactions,
+      ordersSiswa,
+      detailOrdersSiswa,
+      ordersGuru,
+      detailOrdersGuru,
     });
+  }, [products, transactions, detailTransactions, ordersSiswa, detailOrdersSiswa, ordersGuru, detailOrdersGuru]);
 
-    // From legacy order tables
-    [...confirmedOrdersSiswa, ...confirmedOrdersGuru].forEach((order) => {
-      total += Number(order.total_harga || 0);
-    });
-
-    return total;
-  }, [validTransactions, confirmedOrdersSiswa, confirmedOrdersGuru]);
-
-  /**
-   * METRIC 2: ITEM TERJUAL (Total Quantity)
-   * Sum of all items sold
-   */
-  const itemTerjual = useMemo(() => {
-    let total = 0;
-
-    // From new detail_transaksi table
-    const validTransactionIds = new Set(validTransactions.map((t) => t.id));
-    (detailTransactions ?? []).forEach((item) => {
-      if (validTransactionIds.has(item.transaksi_id)) {
-        total += Number(item.jumlah || 0);
-      }
-    });
-
-    // From legacy detail_order tables
-    [...confirmedOrdersSiswa, ...confirmedOrdersGuru].forEach((order) => {
-      const details = order.nis_siswa
-        ? (detailOrdersSiswa ?? []).filter((d) => d.order_id === order.id)
-        : (detailOrdersGuru ?? []).filter((d) => d.order_id === order.id);
-      details.forEach((item) => {
-        total += Number(item.jumlah || 0);
-      });
-    });
-
-    return total;
-  }, [validTransactions, detailTransactions, confirmedOrdersSiswa, confirmedOrdersGuru, detailOrdersSiswa, detailOrdersGuru]);
-
-  /**
-   * METRIC 3: TRANSAKSI (Total Transaction Count)
-   * Count of all unique transactions
-   */
-  const totalTransaksi = useMemo(() => {
-    const newTableCount = validTransactions.length;
-    const legacyCount = confirmedOrdersSiswa.length + confirmedOrdersGuru.length;
-    return newTableCount + legacyCount;
-  }, [validTransactions, confirmedOrdersSiswa, confirmedOrdersGuru]);
-
-  /**
-   * METRIC 4: LABA KOTOR (Gross Profit)
-   * Formula: Sum(harga_jual × jumlah) - Sum(harga_beli × jumlah)
-   * 
-   * This is calculated from detail_transaksi and detail_order tables
-   * joined with produk table for pricing
-   */
-  const labaKotor = useMemo(() => {
-    let totalRevenue = 0;
-    let totalCost = 0;
-
-    // Create product map for quick lookup
-    const productMap = new Map(
-      (products ?? []).map((p) => [p.id, { harga_beli: Number(p.harga_beli || 0), harga_jual: Number(p.harga_jual || 0) }])
-    );
-
-    // From new detail_transaksi table
-    const validTransactionIds = new Set(validTransactions.map((t) => t.id));
-    (detailTransactions ?? []).forEach((item) => {
-      if (validTransactionIds.has(item.transaksi_id)) {
-        const product = productMap.get(item.produk_id);
-        if (product) {
-          const jumlah = Number(item.jumlah || 0);
-          totalRevenue += Number(item.sub_total || 0); // harga_jual × jumlah
-          totalCost += product.harga_beli * jumlah;
-        }
-      }
-    });
-
-    // From legacy detail_order tables
-    [...confirmedOrdersSiswa, ...confirmedOrdersGuru].forEach((order) => {
-      const details = order.nis_siswa
-        ? (detailOrdersSiswa ?? []).filter((d) => d.order_id === order.id)
-        : (detailOrdersGuru ?? []).filter((d) => d.order_id === order.id);
-
-      details.forEach((item) => {
-        const product = productMap.get(item.produk_id);
-        if (product) {
-          const jumlah = Number(item.jumlah || 0);
-          const hargaSatuan = Number(item.harga_satuan || 0);
-          totalRevenue += hargaSatuan * jumlah;
-          totalCost += product.harga_beli * jumlah;
-        }
-      });
-    });
-
-    return Math.max(0, totalRevenue - totalCost);
-  }, [products, validTransactions, detailTransactions, confirmedOrdersSiswa, confirmedOrdersGuru, detailOrdersSiswa, detailOrdersGuru]);
+  const salesChartData = useMemo(() => {
+    return buildSalesChartData(metrics.salesRows, period);
+  }, [metrics.salesRows, period]);
 
   /**
    * Additional metrics (derived from primary metrics)
    */
   const avgOrderValue = useMemo(() => {
-    return totalTransaksi > 0 ? omzet / totalTransaksi : 0;
-  }, [omzet, totalTransaksi]);
+    return metrics.totalTransaksi > 0 ? metrics.omzet / metrics.totalTransaksi : 0;
+  }, [metrics.omzet, metrics.totalTransaksi]);
 
   const estimasiLabaBersih = useMemo(() => {
-    return Math.max(0, labaKotor * 0.9);
-  }, [labaKotor]);
+    return Math.max(0, metrics.labaKotor * 0.9);
+  }, [metrics.labaKotor]);
 
   return {
     // Primary metrics
-    omzet,
-    itemTerjual,
-    totalTransaksi,
-    labaKotor,
+    omzet: metrics.omzet,
+    itemTerjual: metrics.itemTerjual,
+    totalTransaksi: metrics.totalTransaksi,
+    labaKotor: metrics.labaKotor,
+    totalModal: metrics.totalModal,
+    salesRows: metrics.salesRows,
+    productSalesRows: metrics.productSalesRows,
+    topProducts: metrics.topProducts,
+    latestActivity: metrics.latestActivity,
+    lowStockProducts: metrics.lowStockProducts,
+    outOfStockProducts: metrics.outOfStockProducts,
+    totalStok: metrics.totalStok,
+    stockValue: metrics.stockValue,
+    salesChartData,
 
     // Additional metrics
     avgOrderValue,

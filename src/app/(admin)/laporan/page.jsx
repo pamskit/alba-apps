@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase";
 import Loading from "@/components/Loading";
 import { toast } from "react-hot-toast";
+import { DATE_FILTER_OPTIONS, getDateRangeByFilter, calculateAdminMetrics } from "@/utils/admin-metrics";
 import "./laporan.css";
 
 const supabase = createClient();
 
 const FILTER_OPTIONS = {
-   today: "Hari Ini",
-   week: "1 Minggu Terakhir",
-   month: "Bulan Ini",
+   today: DATE_FILTER_OPTIONS.today.label,
+   week: DATE_FILTER_OPTIONS.week.label,
+   month: DATE_FILTER_OPTIONS.month.label,
 };
 
 const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
@@ -50,20 +51,7 @@ export default function LaporanPage() {
       const loadData = async () => {
          setLoading(true);
          try {
-            const now = new Date();
-            let startDate = new Date(now);
-
-            if (filter === "month") {
-               startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            } else if (filter === "week") {
-               startDate.setDate(now.getDate() - 6);
-               startDate.setHours(0, 0, 0, 0);
-            } else {
-               startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            }
-
-            const start = startDate.toISOString();
-            const end = now.toISOString();
+            const { startISO: start, endISO: end } = getDateRangeByFilter(filter);
 
             const [productRes, transactionRes, orderRes, orderGuruRes] = await Promise.all([
                supabase.from("produk").select("id,nama_produk,stok,harga_beli,harga_jual").order("nama_produk", { ascending: true }),
@@ -98,7 +86,7 @@ export default function LaporanPage() {
 
             const [detailTransactionRes, detailOrderRes, detailOrderGuruRes] = await Promise.all([
                transactionIds.length
-                  ? supabase.from("detail_transaksi").select("transaksi_id, produk_id, jumlah").in("transaksi_id", transactionIds)
+                  ? supabase.from("detail_transaksi").select("transaksi_id, produk_id, jumlah, harga_satuan, sub_total").in("transaksi_id", transactionIds)
                   : Promise.resolve({ data: [], error: null }),
                orderIds.length
                   ? supabase.from("detail_order_siswa").select("order_id, produk_id, jumlah, harga_satuan").in("order_id", orderIds)
@@ -134,114 +122,40 @@ export default function LaporanPage() {
    const validOrdersGuru = useMemo(() => (ordersGuru ?? []).filter(isValidOrder), [ordersGuru]);
 
    const reportData = useMemo(() => {
-      const productMap = new Map((products ?? []).map((item) => [item.id, item]));
-      const salesRows = [
-         ...validTransactions.map((item) => ({
-            id: item.id,
-            type: "Transaksi Kasir",
-            tanggal: item.created_at,
-            pelanggan: item.nis_siswa || item.nip_guru || "-",
-            metode: item.payment_method,
-            status: item.payment_status,
-            total: Number(item.amount_total || 0),
-         })),
-         ...validOrders.map((item) => ({
-            id: item.id,
-            type: "Order Siswa",
-            tanggal: item.created_at,
-            pelanggan: item.nis_siswa || "-",
-            metode: item.metode_pembayaran,
-            status: item.status_order,
-            total: Number(item.total_harga || 0),
-         })),
-         ...validOrdersGuru.map((item) => ({
-            id: item.id,
-            type: "Order Guru",
-            tanggal: item.created_at,
-            pelanggan: item.nip_guru || "-",
-            metode: item.metode_pembayaran,
-            status: item.status_order,
-            total: Number(item.total_harga || 0),
-         })),
-      ].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-
-      const productSalesMap = new Map();
-      const addProductLine = (detail, sellPrice) => {
-         const product = productMap.get(detail.produk_id);
-         if (!product) return;
-
-         const qty = Number(detail.jumlah || 0);
-         if (!qty) return;
-
-         const key = product.id;
-         const current = productSalesMap.get(key) ?? {
-            id: product.id,
-            name: product.nama_produk,
-            qty: 0,
-            revenue: 0,
-            modal: 0,
-            laba: 0,
-         };
-
-         current.qty += qty;
-         current.revenue += qty * Number(sellPrice || 0);
-         current.modal += qty * Number(product.harga_beli || 0);
-         current.laba += qty * (Number(sellPrice || 0) - Number(product.harga_beli || 0));
-         productSalesMap.set(key, current);
-      };
-
-      validTransactions.forEach((transaction) => {
-         const items = (detailTransactions ?? []).filter((detail) => detail.transaksi_id === transaction.id);
-         items.forEach((detail) => {
-            const product = productMap.get(detail.produk_id);
-            addProductLine(detail, Number(product?.harga_jual || 0));
-         });
+      const metrics = calculateAdminMetrics({
+         products,
+         transactions,
+         detailTransactions,
+         ordersSiswa: orders,
+         detailOrdersSiswa: detailOrders,
+         ordersGuru,
+         detailOrdersGuru,
       });
-
-      validOrders.forEach((order) => {
-         const items = (detailOrders ?? []).filter((detail) => detail.order_id === order.id);
-         items.forEach((detail) => {
-            const product = productMap.get(detail.produk_id);
-            addProductLine(detail, Number(detail.harga_satuan || product?.harga_jual || 0));
-         });
-      });
-
-      validOrdersGuru.forEach((order) => {
-         const items = (detailOrdersGuru ?? []).filter((detail) => detail.order_id === order.id);
-         items.forEach((detail) => {
-            const product = productMap.get(detail.produk_id);
-            addProductLine(detail, Number(detail.harga_satuan || product?.harga_jual || 0));
-         });
-      });
-
-      const productSalesRows = Array.from(productSalesMap.values()).sort((a, b) => b.qty - a.qty);
-
-      const totalRevenue = salesRows.reduce((sum, item) => sum + Number(item.total || 0), 0);
-      const totalModal = productSalesRows.reduce((sum, item) => sum + Number(item.modal || 0), 0);
-      const totalLaba = productSalesRows.reduce((sum, item) => sum + Number(item.laba || 0), 0);
-      const totalItemsSold = productSalesRows.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-      const totalTransactions = salesRows.length;
-      const totalStok = (products ?? []).reduce((sum, item) => sum + Number(item.stok || 0), 0);
-      const stockValue = (products ?? []).reduce((sum, item) => sum + Number(item.stok || 0) * Number(item.harga_beli || 0), 0);
-      const outOfStockProducts = (products ?? []).filter((item) => Number(item.stok || 0) <= 0);
-      const lowStockProducts = (products ?? []).filter((item) => Number(item.stok || 0) > 0 && Number(item.stok || 0) <= 5);
 
       return {
-         salesRows,
-         productSalesRows,
-         omzet: totalRevenue,
-         totalRevenue,
-         totalModal,
-         labaKotor: totalLaba,
-         totalLaba,
-         itemTerjual: totalItemsSold,
-         totalTransactions,
-         totalStok,
-         stockValue,
-         outOfStockProducts,
-         lowStockProducts,
+         salesRows: metrics.salesRows.map((item) => ({
+            id: item.id,
+            type: item.type,
+            tanggal: item.created_at,
+            pelanggan: item.pelanggan,
+            metode: item.metode,
+            status: item.status,
+            total: item.total,
+         })),
+         productSalesRows: metrics.productSalesRows,
+         omzet: metrics.omzet,
+         totalRevenue: metrics.omzet,
+         totalModal: metrics.totalModal,
+         labaKotor: metrics.labaKotor,
+         totalLaba: metrics.labaKotor,
+         itemTerjual: metrics.itemTerjual,
+         totalTransactions: metrics.totalTransaksi,
+         totalStok: metrics.totalStok,
+         stockValue: metrics.stockValue,
+         outOfStockProducts: metrics.outOfStockProducts,
+         lowStockProducts: metrics.lowStockProducts,
       };
-   }, [products, validTransactions, validOrders, validOrdersGuru, detailTransactions, detailOrders, detailOrdersGuru]);
+   }, [products, transactions, detailTransactions, orders, detailOrders, ordersGuru, detailOrdersGuru]);
 
    function exportReportToCsv() {
       const now = new Date();
